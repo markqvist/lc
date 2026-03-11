@@ -103,18 +103,26 @@ class Session:
         from pathlib import Path
         
         skill_dirs = []
+        loading_config = self.config.loading
         
-        # Built-in skills
+        # Built-in skills (always loaded)
         builtin_dir = Path(__file__).parent / "skills"
         if builtin_dir.exists():
             skill_dirs.append(builtin_dir)
         
-        # User skills in config directory
-        user_dir = self.config.path / "skills"
-        if user_dir.exists():
-            skill_dirs.append(user_dir)
+        # User skills in config directory (configurable, default: enabled)
+        if loading_config.get("user_skills", True):
+            user_dir = self.config.path / "skills"
+            if user_dir.exists():
+                skill_dirs.append(user_dir)
         
-        # Custom directories from config
+        # Project-level skills (configurable, default: disabled)
+        if loading_config.get("project_skills", False):
+            project_dir = Path.cwd() / ".lc" / "skills"
+            if project_dir.exists():
+                skill_dirs.append(project_dir)
+        
+        # Custom directories from config (always enabled if specified)
         for custom_dir in self.config.skills.get("directories", []):
             path = Path(custom_dir).expanduser()
             if path.exists():
@@ -200,6 +208,7 @@ class Session:
     
     def _load_toolkits(self) -> Dict[str, Any]:
         from lc.tools import FileSystemTools, ShellTools
+        from lc.toolloader import ToolLoader
         
         toolkits = {}
         toolkit_config = self.config.toolkits
@@ -208,7 +217,34 @@ class Session:
         if "filesystem" in builtin_names: toolkits["FileSystemTools"] = FileSystemTools()
         if "shell" in builtin_names:      toolkits["ShellTools"] = ShellTools()
         
+        # Load standalone tools from configured directories
+        tool_dirs = self._get_tool_directories()
+        if tool_dirs:
+            loader = ToolLoader(tool_dirs)
+            toolkits.update(loader.get_toolkits())
+        
         return toolkits
+    
+    def _get_tool_directories(self) -> List[Path]:
+        """Get list of tool directories based on loading configuration."""
+        from pathlib import Path
+        
+        tool_dirs = []
+        loading_config = self.config.loading
+        
+        # User tools in config directory (configurable, default: disabled)
+        if loading_config.get("user_tools", False):
+            user_dir = self.config.path / "tools"
+            if user_dir.exists():
+                tool_dirs.append(user_dir)
+        
+        # Project-level tools (configurable, default: disabled)
+        if loading_config.get("project_tools", False):
+            project_dir = Path.cwd() / ".lc" / "tools"
+            if project_dir.exists():
+                tool_dirs.append(project_dir)
+        
+        return tool_dirs
     
     def _create_model_backend(self, force_mock: bool = False):
         model_config = self.config.model

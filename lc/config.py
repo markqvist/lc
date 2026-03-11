@@ -46,6 +46,11 @@ class Config:
             if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"] = []
             if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]      = []
             
+            if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]   = True
+            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]    = False
+            if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"]= False
+            if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"] = False
+            
             if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]    = "system.jinja"
 
             validation = data.validate(Validator())
@@ -113,6 +118,16 @@ class Config:
         return { "directories": self._parse_list(sk.get("directories", "")),
                  "pinned": self._parse_list(sk.get("pinned", "")) }
     
+    @property
+    def loading(self) -> Dict[str, bool]:
+        ld = self._data.get("loading", {})
+        return {
+            "user_skills": ld.get("user_skills", True),      # Default: enabled for backward compat
+            "user_tools": ld.get("user_tools", False),        # Default: disabled (security)
+            "project_skills": ld.get("project_skills", False), # Default: disabled (security)
+            "project_tools": ld.get("project_tools", False),   # Default: disabled (security)
+        }
+    
     def _parse_list(self, value: Any) -> List[str]:
         if not value: return []
         if isinstance(value, list): return [v.strip() for v in value if v.strip()]
@@ -151,6 +166,12 @@ custom = list
 directories = list
 pinned = list
 
+[loading]
+user_skills = boolean
+user_tools = boolean
+project_skills = boolean
+project_tools = boolean
+
 [session]
 persistence = boolean
 max_history = integer
@@ -181,6 +202,12 @@ custom =
 [skills]
 directories =
 pinned =
+
+[loading]
+user_skills = true
+user_tools = false
+project_skills = false
+project_tools = false
 
 [session]
 persistence = true

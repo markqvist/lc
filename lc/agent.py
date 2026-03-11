@@ -138,8 +138,8 @@ class Agent:
         if "." in tool_name: toolkit_name, method_name = tool_name.rsplit(".", 1)
         else: return f"Error: Invalid tool name '{tool_name}'"
         
-        # Check skill gating for non-built-in tools
-        if toolkit_name not in self.BUILTIN_TOOLKIT_PREFIXES:
+        # Check skill gating for non-built-in, non-standalone tools
+        if toolkit_name not in self.BUILTIN_TOOLKIT_PREFIXES and toolkit_name not in self.toolkits:
             if not self._is_skill_tool_allowed(toolkit_name):
                 error_msg = f"Error: Skill '{toolkit_name}' documentation not loaded. Call skills.load_skill with name='{toolkit_name}' first."
                 self.renderer.display_tool_result(error_msg)
