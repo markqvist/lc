@@ -89,22 +89,27 @@ Available tools when this skill is loaded:
 
 ### Phase 1: Registry Scan
 
-At session start, `lc` scans all skill directories and extracts:
-- Frontmatter metadata
-- Tool signatures from `__init__.py` (if present)
+At session start, `lc` scans all skill directories and:
+- Parses SKILL.md frontmatter metadata
+- Imports and instantiates toolkit from `__init__.py` (if present)
+- Extracts tool signatures for KV-cache population
 
-This information is always loaded (required for KV-cache).
+**Design note:** Full toolkit instantiation happens at discovery time (not lazy) to ensure fail-fast error detection and schema consistency.
 
-### Phase 2: Lazy Loading
+### Phase 2: Lazy Documentation Loading
 
-When the agent requests a skill (or triggers keywords match):
-- Full `SKILL.md` content is loaded
-- Tool implementations are imported
-- Skill is marked as "active"
+When the agent calls `skills.load_skill`:
+- Full SKILL.md content is returned as tool result
+- Skill is marked as "loaded" in session state
+- No KV-cache invalidation (state change via conversation)
 
 ### Phase 3: Pinned Skills
 
-Skills with `pinned: true` skip lazy loading — they're fully loaded at session start.
+Skills can be pinned two ways:
+- **SKILL.md frontmatter:** `pinned: true`
+- **Configuration:** Add to `skills.pinned` list in config
+
+Pinned skills bypass the documentation loading requirement — their tools execute immediately without `load_skill`.
 
 ## Tool Integration
 
@@ -134,12 +139,24 @@ class DatabaseTools(Toolkit):
 
 ## Skill Discovery
 
-Skills are discovered from:
+Skills are discovered from (in order):
 
-1. Built-in: `lc/skills/`
-2. User: `~/.lc/skills/`
-3. Project: `./.lc/skills/` (if exists)
-4. Custom paths from config
+1. **Built-in:** `lc/skills/` (always loaded)
+2. **User:** `~/.lc/skills/` (configurable via `loading.user_skills`, default: true)
+3. **Project:** `./.lc/skills/` (configurable via `loading.project_skills`, default: false)
+4. **Custom:** Paths from `skills.directories` config (always checked if specified)
+
+### Security Configuration
+
+The `[loading]` section controls skill loading:
+
+```ini
+[loading]
+user_skills = true       # Enable ~/.lc/skills/ (default)
+project_skills = false   # Enable ./.lc/skills/ (opt-in)
+```
+
+Project-level skills are disabled by default for security — enabling allows repositories to provide custom skills when you work in their directories.
 
 ## The load_skill Tool
 

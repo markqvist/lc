@@ -84,11 +84,17 @@ Base class for context providers. Responsible for:
 - Jinja2 template variable generation
 
 ### skills.py
-Skill registry and lazy loading. Manages:
+Skill registry and loading. Manages:
 - Skill discovery in filesystem
-- Tool signature pre-loading (for KV-cache)
-- Full skill loading on demand
-- Pinned vs. lazy skill distinction
+- Tool signature extraction via full import (fail-fast)
+- Config-pinned skill overrides
+- Skill gating enforcement (loaded vs. unloaded)
+
+### toolloader.py
+Standalone tool loading. Handles:
+- Discovery of individual `.py` files and packages in tool directories
+- Toolkit instantiation from user and project tool paths
+- Integration with main toolkit registry (no skill wrapper required)
 
 ### rendering.py
 Minimal, dependency-free ANSI output streaming. Handles:
@@ -176,6 +182,24 @@ Gating is checked before tool execution. If `--gate` is specified, interactive c
 2. Session state (if resuming)
 3. `~/.lc/config` or `~/.config/lc/config`
 4. Built-in defaults (lowest priority)
+
+## Loading Security Model
+
+The `[loading]` configuration section controls what code executes:
+
+```ini
+[loading]
+user_skills = true       # Load from ~/.lc/skills/
+user_tools = false       # Load from ~/.lc/tools/
+project_skills = false   # Load from ./.lc/skills/
+project_tools = false    # Load from ./.lc/tools/
+```
+
+**Security defaults:**
+- User skills: Enabled (backward compatibility)
+- User tools, project skills/tools: Disabled (explicit opt-in required)
+- All standalone tools bypass skill gating (trusted when enabled)
+- Skill tools require `load_skill` unless pinned
 
 ## Error Handling Strategy
 
