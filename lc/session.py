@@ -93,17 +93,43 @@ class Session:
         except Exception: return None
     
     def _initialize(self) -> None:
+        self._load_skill_registry()
         self._build_system_prompt()
         self.conversation.append({"role": "system", "content": self.system_prompt})
     
+    def _load_skill_registry(self) -> None:
+        """Initialize skill registry with all skill directories."""
+        from lc.skills import SkillRegistry
+        from pathlib import Path
+        
+        skill_dirs = []
+        
+        # Built-in skills
+        builtin_dir = Path(__file__).parent / "skills"
+        if builtin_dir.exists():
+            skill_dirs.append(builtin_dir)
+        
+        # User skills in config directory
+        user_dir = self.config.path / "skills"
+        if user_dir.exists():
+            skill_dirs.append(user_dir)
+        
+        # Custom directories from config
+        for custom_dir in self.config.skills.get("directories", []):
+            path = Path(custom_dir).expanduser()
+            if path.exists():
+                skill_dirs.append(path)
+        
+        self.skill_registry = SkillRegistry(skill_dirs)
+    
     def _build_system_prompt(self) -> None:
         from lc.resolver import Context as ResolverContext
-        from lc.resolvers import TemplateResolver, EnvironmentResolver, FilesystemResolver, SystemResolver
+        from lc.resolvers import TemplateResolver, EnvironmentResolver, FilesystemResolver, SystemResolver, ToolsResolver
         
         resolver_ctx = ResolverContext(session=self, config=self.config)
         resolved_context = {}
         
-        for resolver_class in [TemplateResolver, EnvironmentResolver, FilesystemResolver, SystemResolver]:
+        for resolver_class in [TemplateResolver, ToolsResolver, EnvironmentResolver, FilesystemResolver, SystemResolver]:
             try:
                 resolver = resolver_class()
                 result = resolver.resolve(resolver_ctx)
@@ -120,7 +146,7 @@ class Session:
             system_template = self.jinja.from_string(resolved_context["templates"][sysprompt_key])
             self.system_prompt = system_template.render(**resolved_context)
 
-            # RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
+            RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
     
     def save(self) -> None:
         if not self.config.session.get("persistence", True): return

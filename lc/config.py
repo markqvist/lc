@@ -104,7 +104,7 @@ class Config:
     @property
     def resolvers(self) -> Dict[str, List[str]]:
         res = self._data.get("resolvers", {})
-        return { "builtin": self._parse_list(res.get("builtin", "environment, filesystem, system")),
+        return { "builtin": self._parse_list(res.get("builtin", "environment, filesystem, system, tools")),
                  "custom": self._parse_list(res.get("custom", "")) }
     
     @property
@@ -200,13 +200,20 @@ You help users by reading files, executing commands, and answering questions.
 - Session started: {{ environment.date }} {{ environment.time }}
 - Working directory: {{ environment.cwd }}
 - Directory contains: {{ filesystem.file_count }} files, {{ filesystem.dir_count }} directories
-- Recent files: README.md, setup.py, .gitignore, Makefile, LICENSE.md
+- Recent files: {{ filesystem.recent_files | join(", ") }}
 
 ## Tree of current working directory
 
 {{ filesystem.tree }}
 
-## Available tools:
+## Available tools ({{ tools.count }} total)
 
 {{ tools.summary_list }}
+
+## Instructions
+
+Use the available tools to help the user accomplish their tasks. When using tools:
+- Always check file contents before making modifications
+- Confirm destructive operations with the user when appropriate
+- Read relevant documentation with `skills.load_skill` before using skill-specific tools
 """

@@ -60,7 +60,7 @@ class SkillRegistry:
                 if skill_path.is_dir(): self._load_skill_metadata(skill_path)
     
     def _load_skill_metadata(self, path: Path) -> None:
-        """Load skill metadata and tool signatures."""
+        """Load skill metadata and instantiate toolkit."""
         skill_md = path / "SKILL.md"
         if not skill_md.exists(): return
         
@@ -69,9 +69,10 @@ class SkillRegistry:
         
         skill = Skill(path, metadata, body)
         
-        # Pre-load tool signatures if __init__.py exists
+        # Load toolkit implementation if __init__.py exists
         init_py = path / "__init__.py"
-        if init_py.exists(): self._extract_tool_signatures(skill, init_py)
+        if init_py.exists():
+            self._load_skill_toolkit(skill, init_py)
         
         self.skills[skill.name] = skill
     
@@ -102,11 +103,44 @@ class SkillRegistry:
         
         return metadata, body
     
-    def _extract_tool_signatures(self, skill: Skill, init_py: Path) -> None:
-        """Extract tool signatures from skill toolkit without loading implementation."""
-        # TODO: Parse or import toolkit to get tool signatures
-        # For now, placeholder
-        pass
+    def _load_skill_toolkit(self, skill: Skill, init_py: Path) -> None:
+        """Load and instantiate skill toolkit from __init__.py."""
+        import importlib.util
+        import sys
+        from lc.toolkit import Toolkit
+        
+        skill_name = skill.path.name
+        module_name = f"lc.skill.{skill_name}"
+        
+        try:
+            # Load module from file
+            spec = importlib.util.spec_from_file_location(module_name, init_py)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not load spec from {init_py}")
+            
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+            
+            # Find Toolkit subclass in module
+            toolkit_class = None
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if (isinstance(attr, type) and 
+                    issubclass(attr, Toolkit) and 
+                    attr is not Toolkit):
+                    toolkit_class = attr
+                    break
+            
+            if toolkit_class is None:
+                raise ValueError(f"No Toolkit subclass found in {init_py}")
+            
+            # Instantiate toolkit - signatures extracted automatically
+            skill._toolkit = toolkit_class()
+            skill.tools = skill._toolkit.tools
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to load skill toolkit from {skill.path}: {e}") from e
     
     def get_skill(self, name: str) -> Optional[Skill]:
         """Get a skill by name."""
@@ -118,6 +152,14 @@ class SkillRegistry:
         for skill in self.skills.values():
             signatures.update(skill.tools)
         return signatures
+    
+    def get_all_toolkits(self) -> Dict[str, Any]:
+        """Get all skill toolkit instances keyed by skill name."""
+        toolkits = {}
+        for name, skill in self.skills.items():
+            if skill._toolkit is not None:
+                toolkits[name] = skill._toolkit
+        return toolkits
     
     def find_by_trigger(self, text: str) -> List[Skill]:
         """Find skills matching trigger keywords in text."""
