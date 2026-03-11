@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
+
 import os
 import RNS
 from lc.vendor.configobj import ConfigObj

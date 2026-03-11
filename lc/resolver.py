@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
+
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 

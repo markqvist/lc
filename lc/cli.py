@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
+
 """Command-line interface for lc."""
 
 import argparse

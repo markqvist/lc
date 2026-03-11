@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+
+# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
+
 """
 lc - Humanity's Last Command
-A minimal, local-first agentic command executor.
+A minimal, truly local agentic command executor.
 """
 
 from setuptools import setup, find_packages

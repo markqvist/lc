@@ -37,7 +37,7 @@ Then you watch as the machine does the work. It plans. It executes. It reports. 
 
 This is different:
 
-- **Local-first**: Runs on your machine, with your models, on your data.
+- **Truly local**: Runs on your machine, with your models, on your data.
 - **Auditable**: Small codebase, readable code, no 600k-line dependency nightmares.
 - **Explicit**: You see what it's doing. No hidden API calls, no data exfiltration.
 - **Extensible**: Teach it new tricks with simple Python.

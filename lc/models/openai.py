@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
+
 """OpenAI-compatible model backend for lc."""
 
 import RNS

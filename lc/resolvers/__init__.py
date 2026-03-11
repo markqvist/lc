@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
+
 """Built-in resolvers for lc."""
 
 from lc.resolvers.environment import EnvironmentResolver
