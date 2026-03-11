@@ -121,6 +121,14 @@ builtin = filesystem, shell
 builtin = environment, filesystem, system
 ```
 
+## But... How do I make it take over the world?
+
+1. Download `llama.cpp` for your specific CPU and GPU architecture, grab a good local model like `GLM 4.7 Flash` or `Qwen 3.5 35B-A3B`.
+2. Install `lc` and point it the config to your local `llama-server` instance.
+3. Invoke `lc` from a periodic `cron` job with a completely open-ended prompt.
+
+Your job is done. Watch the chaos unfold. Or just go to sleep.
+
 ## Usage
 
 ### One-Shot Mode (Default)
