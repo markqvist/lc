@@ -45,6 +45,8 @@ class Config:
             if not data.get("resolvers", {}).get("custom",      {}): data["resolvers"]["custom"]   = []
             if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"] = []
             if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]      = []
+            
+            if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]    = "system.jinja"
 
             validation = data.validate(Validator())
 
@@ -132,6 +134,7 @@ backend = string
 base_url = string
 model = string
 api_key = string
+sysprompt = string
 temperature = float
 max_tokens = integer
 context_limit = integer
@@ -162,6 +165,7 @@ backend = openai
 base_url = http://localhost:1234/v1
 model = local-model
 api_key =
+sysprompt = system.jinja
 temperature = 0.7
 max_tokens = 4096
 context_limit = 128000
