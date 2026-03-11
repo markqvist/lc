@@ -53,28 +53,24 @@ class FilesystemResolver(Resolver):
     def _count_entries(self, path: Path) -> int:
         """Count total entries in a directory (used for non-descended directories)."""
         try:
-            if not path.exists() or not path.is_dir():
-                return 0
+            if not path.exists() or not path.is_dir(): return 0
             return sum(1 for _ in path.iterdir())
-        except Exception:
-            return 0
+        
+        except Exception: return 0
     
     def _count_entries(self, path: Path) -> int:
         """Count total entries in a directory (used for non-descended directories)."""
         try:
-            if not path.exists() or not path.is_dir():
-                return 0
+            if not path.exists() or not path.is_dir(): return 0
             return sum(1 for _ in path.iterdir())
-        except Exception:
-            return 0
+        
+        except Exception: return 0
 
     def _build_tree(self, path: Path, depth: int, prefix: str = "", no_descent: Optional[List[str]] = None) -> str:
         """Build ASCII tree representation."""
-        if depth > self.MAX_TREE_DEPTH:
-            return ""
+        if depth > self.MAX_TREE_DEPTH: return ""
         
-        if not path.exists() or not path.is_dir():
-            return ""
+        if not path.exists() or not path.is_dir(): return ""
         
         # Default no-descent list (can be overridden by caller)
         if no_descent is None:
@@ -117,6 +113,6 @@ class FilesystemResolver(Resolver):
             hidden_count = total_entries - self.MAX_ENTRIES
             # Count how many non-descent dirs are hidden for accurate summary
             hidden_dir_count = sum(1 for e in entries[self.MAX_ENTRIES:] if e.name in no_descent)
-            lines.append(f"{prefix}└── ... ({hidden_count - hidden_dir_count + hidden_dir_count*10} more items)")  # Simplified: just show total
+            lines.append(f"{prefix}└── ... ({total_entries - self.MAX_ENTRIES} more items)")  # Simplified: just show total
         
         return "\n".join(lines)
