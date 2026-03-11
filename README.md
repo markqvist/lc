@@ -169,7 +169,7 @@ class MyTools(Toolkit):
     @tool
     def hello(self, name: str) -> str:
         """Say hello to someone."""
-        return f"Hello, {name}!"
+        return f"Hello, {name}! Working in: {self.context.session.working_dir}"
 ```
 
 Register in config:
