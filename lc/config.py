@@ -1,3 +1,7 @@
+import os
+import RNS
+from lc.vendor.configobj import ConfigObj
+from lc.vendor.validate import Validator
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
@@ -22,34 +26,48 @@ class Config:
     
     @classmethod
     def _parse_config(cls, config_file: Path) -> Dict[str, Any]:
-        """Parse simple INI-style config file."""
-        data = {}
-        current_section = None
-        
-        content = config_file.read_text(encoding='utf-8')
-        
-        for line in content.split('\n'):
-            line = line.strip()
-            if not line or line.startswith('#'): continue
+        try:
+            spec       = ConfigObj(CONFIG_SPEC.splitlines())
+            data       = ConfigObj(os.path.expanduser(config_file), configspec=spec, write_empty_values=True)
+
+            if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]   = []
+            if not data.get("toolkits",  {}).get("custom",      {}): data["toolkits"]["custom"]    = []
+            if not data.get("resolvers", {}).get("builtin",     {}): data["resolvers"]["builtin"]  = []
+            if not data.get("resolvers", {}).get("custom",      {}): data["resolvers"]["custom"]   = []
+            if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"] = []
+            if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]      = []
+
+            validation = data.validate(Validator())
+
+            def is_invalid(data: dict) -> bool:
+                for key, value in data.items():
+                    if value is False: return True
+                    if isinstance(value, dict):
+                        if is_invalid(value): return True
+                return False
             
-            if line.startswith('[') and line.endswith(']'):
-                current_section = line[1:-1]
-                data[current_section] = {}
-            
-            elif '=' in line and current_section is not None:
-                key, value = line.split('=', 1)
-                key = key.strip()
-                value = value.strip()
+            def failed_keys(data: dict) -> List[str]:
+                errors = []
+                def traverse(current_data, prefix=""):
+                    for key, value in current_data.items():
+                        full_key = f"{prefix}.{key}" if prefix else key
+                        if value is False: errors.append(full_key)
+                        elif isinstance(value, dict): traverse(value, full_key)
                 
-                # Convert types
-                if value.lower() == 'true':    value = True
-                elif value.lower() == 'false': value = False
-                elif value.isdigit():          value = int(value)
-                elif value.replace('.', '', 1).isdigit() and value.count('.') == 1: value = float(value)
-                
-                data[current_section][key] = value
-        
-        return data
+                traverse(data)
+                return errors
+
+            if not validation and is_invalid(validation):
+                print("Config is invalid!")
+                print(f"Failed keys: {failed_keys(validation)}")
+                os._exit(255)
+
+            return data
+
+        except Exception as e:
+            print("An exception occurred while loading and validating the configuration:")
+            RNS.trace_exception(e)
+            os._exit(255)
     
     @property
     def path(self) -> Path: return self._path
@@ -95,6 +113,37 @@ class Config:
             else: return default
         
         return value
+
+CONFIG_SPEC = """
+[model]
+backend = string
+base_url = string
+model = string
+api_key = string
+temperature = float
+max_tokens = integer
+context_limit = integer
+
+[toolkits]
+builtin = list
+custom = list
+
+[resolvers]
+builtin = list
+custom = list
+
+[skills]
+directories = list
+pinned = list
+
+[session]
+persistence = boolean
+max_history = integer
+
+[display]
+show_reasoning = boolean
+stream_output = boolean
+"""
 
 DEFAULT_CONFIG = """[model]
 backend = openai
