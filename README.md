@@ -219,7 +219,9 @@ Skills load on demand (or pin them to load immediately). The agent can request s
 
 ## Safety
 
-`lc` can execute shell commands and destroy your computer. This is a feature, not a bug. With great power, etc., etc.
+`lc` can execute shell commands and destroy your computer. This is a feature, not a bug.
+
+> With great power, etc., etc.
 
 Use `--gate` when experimenting. Use `--gate=3` when letting children use it. Use your judgment: Always.
 
