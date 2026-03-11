@@ -48,16 +48,13 @@ Sessions are persisted as msgpack files for efficiency and atomicity. This docum
     },
     
     # Skill State
-    "skill_registry": {
-        "all_skills": [...],         # All discovered skills (metadata)
-        "loaded_skills": [...],      # Fully loaded skill names
-        "pinned_skills": [...]       # Skills loaded at start
-    },
+    "loaded_skills": [...],      # Names of skills that have been loaded via load_skill
     
-    # Resolver Output (cached)
-    "resolver_cache": {
-        "environment": {...},
-        "filesystem": {...}
+    # Tool State
+    "tool_context": {
+        "executed_commands": [],     # History for context
+        "created_files": [],         # For cleanup/tracking
+        "custom_state": {}           # Toolkit-specific data
     },
     
     # Statistics
