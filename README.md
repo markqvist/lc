@@ -31,6 +31,8 @@ $ lc "Extract audio from all video files, transcribe them, find the ones about P
 
 Then you watch as the machine does the work. It plans. It executes. It reports. You drink coffee and scratch your bum.
 
+If you want a bit more context, read [The Guide](./GUIDE.md)
+
 ## The Philosophy
 
 `lc` was born from a simple observation: Most agentic frameworks are bloated, opaque, and designed for cloud-scale Kubernetes deployments when what you actually need is to rename some files without reading seventeen man pages.
