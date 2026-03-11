@@ -13,7 +13,7 @@ class FilesystemResolver(Resolver):
     """Provides filesystem context information."""
     
     MAX_TREE_DEPTH   = 2
-    MAX_ENTRIES      = 50
+    MAX_ENTRIES      = 20
     MAX_RECENT_FILES = 10
     NO_DESCENT       = [".git", ".cache", "__pycache__", ".tox", ".venv", ".hg"]
     
