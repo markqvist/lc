@@ -50,10 +50,12 @@ class SkillRegistry:
     
     FRONTMATTER_PATTERN = re.compile(r'^---\s*\n(.*?)\n---\s*\n', re.DOTALL)
     
-    def __init__(self, skill_dirs: List[Path]):
+    def __init__(self, skill_dirs: List[Path], pinned: Optional[List[str]] = None):
         self.skill_dirs = skill_dirs
         self.skills: Dict[str, Skill] = {}
+        self._pinned_override = set(pinned or [])
         self._discover_skills()
+        self._apply_pinned_overrides()
     
     def _discover_skills(self) -> None:
         """Discover all available skills."""
@@ -181,3 +183,15 @@ class SkillRegistry:
     def get_pinned_skills(self) -> List[Skill]:
         """Get all pinned skills."""
         return [s for s in self.skills.values() if s.pinned]
+    
+    def _apply_pinned_overrides(self) -> None:
+        """Apply config-level pinned overrides to discovered skills."""
+        for skill_name in self._pinned_override:
+            if skill_name in self.skills:
+                self.skills[skill_name].pinned = True
+            # Also try matching by skill directory name (case-insensitive)
+            else:
+                for name, skill in self.skills.items():
+                    if name.lower() == skill_name.lower():
+                        skill.pinned = True
+                        break

@@ -7,5 +7,6 @@ from lc.resolvers.environment import EnvironmentResolver
 from lc.resolvers.filesystem import FilesystemResolver
 from lc.resolvers.system import SystemResolver
 from lc.resolvers.tools import ToolsResolver
+from lc.resolvers.skills import SkillsResolver
 
-__all__ = ["TemplateResolver", "EnvironmentResolver", "FilesystemResolver", "SystemResolver", "ToolsResolver"]
+__all__ = ["TemplateResolver", "EnvironmentResolver", "FilesystemResolver", "SystemResolver", "ToolsResolver", "SkillsResolver"]

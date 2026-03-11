@@ -104,7 +104,7 @@ class Config:
     @property
     def resolvers(self) -> Dict[str, List[str]]:
         res = self._data.get("resolvers", {})
-        return { "builtin": self._parse_list(res.get("builtin", "environment, filesystem, system, tools")),
+        return { "builtin": self._parse_list(res.get("builtin", "environment, filesystem, system, tools, skills")),
                  "custom": self._parse_list(res.get("custom", "")) }
     
     @property
@@ -206,6 +206,10 @@ You help users by reading files, executing commands, and answering questions.
 
 {{ filesystem.tree }}
 
+## Available skills ({{ skills.count }} total)
+
+{{ skills.summary }}
+
 ## Available tools ({{ tools.count }} total)
 
 {{ tools.summary_list }}
@@ -215,5 +219,5 @@ You help users by reading files, executing commands, and answering questions.
 Use the available tools to help the user accomplish their tasks. When using tools:
 - Always check file contents before making modifications
 - Confirm destructive operations with the user when appropriate
-- Read relevant documentation with `skills.load_skill` before using skill-specific tools
+- For unpinned skill tools, call `skills.load_skill` first to get documentation
 """

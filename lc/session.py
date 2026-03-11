@@ -120,16 +120,18 @@ class Session:
             if path.exists():
                 skill_dirs.append(path)
         
-        self.skill_registry = SkillRegistry(skill_dirs)
+        # Apply config-level pinned overrides
+        pinned_list = self.config.skills.get("pinned", [])
+        self.skill_registry = SkillRegistry(skill_dirs, pinned=pinned_list)
     
     def _build_system_prompt(self) -> None:
         from lc.resolver import Context as ResolverContext
-        from lc.resolvers import TemplateResolver, EnvironmentResolver, FilesystemResolver, SystemResolver, ToolsResolver
+        from lc.resolvers import TemplateResolver, EnvironmentResolver, FilesystemResolver, SystemResolver, ToolsResolver, SkillsResolver
         
         resolver_ctx = ResolverContext(session=self, config=self.config)
         resolved_context = {}
         
-        for resolver_class in [TemplateResolver, ToolsResolver, EnvironmentResolver, FilesystemResolver, SystemResolver]:
+        for resolver_class in [TemplateResolver, ToolsResolver, SkillsResolver, EnvironmentResolver, FilesystemResolver, SystemResolver]:
             try:
                 resolver = resolver_class()
                 result = resolver.resolve(resolver_ctx)
@@ -146,7 +148,7 @@ class Session:
             system_template = self.jinja.from_string(resolved_context["templates"][sysprompt_key])
             self.system_prompt = system_template.render(**resolved_context)
 
-            # RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
+            RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
     
     def save(self) -> None:
         if not self.config.session.get("persistence", True): return
