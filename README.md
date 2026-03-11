@@ -164,8 +164,23 @@ Gate levels:
 ### Session Persistence
 
 ```bash
+# List all sessions
+$ lc --list-sessions
+
+# Resume previous session
 $ lc -i --resume
-# Continue previous session
+
+# Resume specific session by ID
+$ lc -i --resume --session-id <uuid>
+
+# Resume by name (if you named the session)
+$ lc -i --resume --session-id "docs-refactor"
+
+# Create a named session
+$ lc -i --name "docs-refactor"
+
+# Rebuild system prompt on resume (loads new skills, invalidates KV-cache)
+$ lc -i --resume --rebuild
 ```
 
 Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not mine.

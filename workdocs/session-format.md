@@ -20,6 +20,7 @@ Sessions are persisted as msgpack files for efficiency and atomicity. This docum
     # Metadata
     "version": 1,                    # Session format version
     "session_id": "uuid-string",     # Unique identifier
+    "name": "docs-refactor",         # Optional human-readable name
     "created_at": 1234567890.0,      # Unix timestamp (float)
     "updated_at": 1234567890.0,      # Unix timestamp (float)
     
@@ -159,7 +160,30 @@ lc --resume <uuid>
 1. **Creation**: `lc "command"` creates new session
 2. **Active**: Session file updated after each turn
 3. **Completion**: Session archived if completed successfully
-4. **Resume**: `lc --interactive --resume` continues session
+4. **Resume**: `lc --resume` continues last session, `lc --resume --session-id <id>` continues specific session
+
+## Session Resumption
+
+When resuming a session:
+
+- **Default behavior**: Preserves system prompt to maintain KV-cache validity (fast resume)
+- **`--rebuild` flag**: Regenerates system prompt, reloads skills (slow but current)
+- **Context display**: Shows last 4 messages with "(... N previous messages)" truncation marker
+- **Working directory**: Warns if current directory differs from session working directory
+
+## Named Sessions
+
+Sessions can have human-readable names for easy reference:
+
+```bash
+# Create named session
+lc -i --name "docs-refactor"
+
+# Resume by name
+lc --resume --session-id "docs-refactor"
+```
+
+Names are stored in the `name` field and resolved before UUID matching.
 
 ## Configuration Snapshot
 

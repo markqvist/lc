@@ -21,7 +21,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gate", type=int, metavar="LEVEL", help="Enable gating for operations at or above LEVEL (0-3)")
     parser.add_argument("-c", "--config", type=str, metavar="PATH", help="Path to configuration directory (default: ~/.lc or ~/.config/lc)")
     parser.add_argument("--resume", action="store_true", help="Resume previous session (implies -i)")
-    parser.add_argument("--session-id", type=str, metavar="ID", help="Resume specific session by ID")
+    parser.add_argument("--session-id", type=str, metavar="ID", help="Resume specific session by ID or name")
+    parser.add_argument("--name", type=str, metavar="NAME", help="Name for the session (for easy reference later)")
+    parser.add_argument("--rebuild", action="store_true", help="Rebuild system prompt on resume (invalidates KV-cache, loads new skills)")
+    parser.add_argument("--list-sessions", action="store_true", help="List available sessions and exit")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("--version", action="version", version=f"%(prog)s {Session.get_version()}")
     
@@ -43,19 +46,62 @@ def resolve_config_path(specified: Optional[str]) -> Path:
         dot_lc.mkdir(parents=True, exist_ok=True)
         return dot_lc
 
+def list_sessions(config: Config) -> int:
+    """List available sessions and exit."""
+    from lc.session import SessionManager
+    
+    sessions = SessionManager.list_sessions(config)
+    
+    if not sessions:
+        print("No sessions found.")
+        return 0
+    
+    print(f"{'Name':<20} {'ID':<36} {'Messages':<10} {'Updated':<20} {'Directory'}")
+    print("-" * 120)
+    
+    for session in sessions:
+        name = session.get("name", "")[:18]
+        sid = session.get("session_id", "")[:36]
+        msg_count = len([m for m in session.get("conversation", []) if m.get("role") in ("user", "assistant")])
+        updated = session.get("updated_at", 0)
+        
+        # Format timestamp
+        import time
+        try:
+            time_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(updated))
+        except:
+            time_str = "unknown"
+        
+        working_dir = session.get("working_dir", "")[:30]
+        
+        print(f"{name:<20} {sid:<36} {msg_count:<10} {time_str:<20} {working_dir}")
+    
+    return 0
+
 def main() -> int:
     parser = create_argument_parser()
     args = parser.parse_args()
-    
-    if not args.command and not args.interactive and not args.resume:
-        parser.print_help()
-        return 1
     
     config_path = resolve_config_path(args.config)
     
     try:
         config = Config.load(config_path)
-        session = Session.create_or_resume(config=config, resume=args.resume or bool(args.session_id), session_id=args.session_id)
+        
+        # Handle session listing
+        if args.list_sessions:
+            return list_sessions(config)
+        
+        if not args.command and not args.interactive and not args.resume:
+            parser.print_help()
+            return 1
+        
+        session = Session.create_or_resume(
+            config=config, 
+            resume=args.resume or bool(args.session_id), 
+            session_id=args.session_id,
+            session_name=args.name,
+            rebuild_system_prompt=args.rebuild
+        )
 
         if args.command:
             result = session.execute(args.command, gate_level=args.gate)
