@@ -117,7 +117,7 @@ class Session:
         system_template = self.jinja.from_string(resolved_context["templates"]["system"])
         self.system_prompt = system_template.render(**resolved_context)
 
-        RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
+        # RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
     
     def save(self) -> None:
         if not self.config.session.get("persistence", True): return
