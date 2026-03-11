@@ -2,10 +2,13 @@
 
 """Session management for lc."""
 
+import RNS
 import uuid
 import time
+import jinja2
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+from types import SimpleNamespace
 from dataclasses import dataclass, field
 
 from RNS.vendor import umsgpack
@@ -35,6 +38,7 @@ class Session:
         self.created_at = time.time()
         self.updated_at = self.created_at
         self.working_dir = Path.cwd()
+        self.jinja = jinja2.Environment(undefined=jinja2.Undefined)
         
         # Conversation state
         self.conversation: List[Dict[str, Any]] = []
@@ -94,52 +98,26 @@ class Session:
     
     def _build_system_prompt(self) -> None:
         from lc.resolver import Context as ResolverContext
-        from lc.resolvers import EnvironmentResolver, FilesystemResolver, SystemResolver
+        from lc.resolvers import TemplateResolver, EnvironmentResolver, FilesystemResolver, SystemResolver
         
         resolver_ctx = ResolverContext(session=self, config=self.config)
-        context_vars = {}
+        resolved_context = {}
         
-        for resolver_class in [EnvironmentResolver, FilesystemResolver, SystemResolver]:
+        for resolver_class in [TemplateResolver, EnvironmentResolver, FilesystemResolver, SystemResolver]:
             try:
                 resolver = resolver_class()
                 result = resolver.resolve(resolver_ctx)
-                if result: context_vars.update(result)
+                if result: resolved_context.update(result)
             
-            except Exception: pass
+            except Exception as e:
+                print(f"An error occurred while resolving variables from {resolver_class}. This resolver was skipped.")
+                RNS.trace_exception(e)
         
         # Build system prompt
-        lines = [
-            "You are lc (Humanity's Last Command), a helpful terminal assistant.",
-            "You help users by reading files, executing commands, and answering questions.",
-            "",
-            "Current context:",
-        ]
-        
-        # Add environment info
-        if "environment" in context_vars:
-            env = context_vars["environment"]
-            lines.append(f"- Working directory: {env.get('cwd', 'unknown')}")
-            lines.append(f"- User: {env.get('user', 'unknown')}@{env.get('hostname', 'unknown')}")
-            lines.append(f"- Date/Time: {env.get('date', 'unknown')} {env.get('time', 'unknown')}")
-        
-        # Add filesystem info
-        if "filesystem" in context_vars:
-            fs = context_vars["filesystem"]
-            if fs.get("file_count", 0) > 0 or fs.get("dir_count", 0) > 0:
-                lines.append(f"- Directory contains: {fs.get('file_count', 0)} files, {fs.get('dir_count', 0)} directories")
-                if fs.get("recent_files"): lines.append(f"- Recent files: {', '.join(fs['recent_files'][:5])}")
-        
-        lines.extend(["",
-                      "Available tools:",
-                      "- filesystem.read: Read text or image files",
-                      "- filesystem.write: Write content to files",
-                      "- filesystem.edit: Edit files by replacing text",
-                      "- filesystem.list_dir: List directory contents",
-                      "- shell.exec: Execute shell commands",
-                      "",
-                      "Respond naturally. Use tools when needed to help the user."])
-        
-        self.system_prompt = "\n".join(lines)
+        system_template = self.jinja.from_string(resolved_context["templates"]["system"])
+        self.system_prompt = system_template.render(**resolved_context)
+
+        RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
     
     def save(self) -> None:
         if not self.config.session.get("persistence", True): return

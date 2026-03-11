@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
 """Filesystem resolver for lc."""
+import RNS
 
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -43,7 +44,9 @@ class FilesystemResolver(Resolver):
                 }
             }
             
-        except Exception:
+        except Exception as e:
+            RNS.log("An error occurred while resolving filesystem information:")
+            RNS.trace_exception(e)
             return None
     
     def _build_tree(self, path: Path, depth: int, prefix: str = "") -> str:
@@ -58,6 +61,7 @@ class FilesystemResolver(Resolver):
         entries = sorted(path.iterdir(), key=lambda e: (not e.is_dir(), e.name.lower()))
         
         # Limit entries
+        total_entries = len(entries)
         if len(entries) > self.MAX_ENTRIES:
             entries = entries[:self.MAX_ENTRIES]
             truncated = True
@@ -79,6 +83,6 @@ class FilesystemResolver(Resolver):
                 lines.append(f"{prefix}{connector}📄 {entry.name}")
         
         if truncated:
-            lines.append(f"{prefix}└── ... ({len(path.iterdir()) - self.MAX_ENTRIES} more items)")
+            lines.append(f"{prefix}└── ... ({total_entries - self.MAX_ENTRIES} more items)")
         
         return "\n".join(lines)

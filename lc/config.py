@@ -19,8 +19,15 @@ class Config:
         if not config_file.exists():
             config_path.mkdir(parents=True, exist_ok=True)
             config_file.write_text(DEFAULT_CONFIG.strip())
-            (config_path / "sessions").mkdir(exist_ok=True)
-            (config_path / "skills").mkdir(exist_ok=True)
+        
+        (config_path / "sessions").mkdir(exist_ok=True)
+        (config_path / "templates").mkdir(exist_ok=True)
+        (config_path / "skills").mkdir(exist_ok=True)
+
+        sysprompt_path = (config_path / "templates" / "system.jinja")
+        if not os.path.isfile(sysprompt_path):
+            with open(sysprompt_path, "wb") as fh:
+                fh.write(DEFAULT_SYSPROMPT.encode("UTF-8"))
 
         data = cls._parse_config(config_file)
 
@@ -73,6 +80,9 @@ class Config:
     
     @property
     def path(self) -> Path: return self._path
+    
+    @property
+    def template_path(self) -> Path: return (self._path / "templates")
     
     @property
     def model(self) -> Dict[str, Any]: return self._data.get("model", {})
@@ -175,4 +185,24 @@ max_history = 100
 [display]
 show_reasoning = true
 stream_output = true
+"""
+
+DEFAULT_SYSPROMPT = """You are lc (Humanity's Last Command), an excellent terminal assistant.
+You help users by reading files, executing commands, and answering questions.
+
+## Current context:
+
+- User: {{ environment.user }}
+- Session started: {{ environment.date }} {{ environment.time }}
+- Working directory: {{ environment.cwd }}
+- Directory contains: {{ filesystem.file_count }} files, {{ filesystem.dir_count }} directories
+- Recent files: README.md, setup.py, .gitignore, Makefile, LICENSE.md
+
+## Tree of current working directory
+
+{{ filesystem.tree }}
+
+## Available tools:
+
+{{ tools.summary_list }}
 """
