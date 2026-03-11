@@ -33,6 +33,8 @@ class Agent:
     
     def _get_all_tools(self) -> List[Dict[str, Any]]:
         tools = []
+        
+        # Built-in toolkits
         for toolkit_name, toolkit in self.toolkits.items():
             for tool_spec in toolkit.tools.values():
                 tools.append({"type": "function",
@@ -40,10 +42,22 @@ class Agent:
                                             "description": tool_spec["description"],
                                             "parameters": tool_spec["parameters"] } })
         
+        # Skill toolkits (namespaced)
+        if hasattr(self.session, 'skill_registry'):
+            for skill_name, toolkit in self.session.skill_registry.get_all_toolkits().items():
+                for tool_key, tool_spec in toolkit.tools.items():
+                    # Namespace skill tools: SkillName.tool_name
+                    short_name = tool_key.split('.')[-1]
+                    namespaced_name = f"{skill_name}.{short_name}"
+                    tools.append({"type": "function",
+                                  "function": { "name": namespaced_name,
+                                                "description": tool_spec["description"],
+                                                "parameters": tool_spec["parameters"] } })
+        
         # Add load_skill tool
         tools.append({"type": "function",
                       "function": { "name": "skills.load_skill",
-                                    "description": "Load a skill by name to access its documentation and tools",
+                                    "description": "Load a skill by name to access its documentation and tools. Required before using skill-specific tools.",
                                     "parameters": { "type": "object",
                                                     "properties": { "name": { "type": "string", "description": "Name of the skill to load" } },
                                                     "required": ["name"] } } })
@@ -96,6 +110,9 @@ class Agent:
         
         return content
     
+    # Built-in toolkit prefixes that bypass skill gating
+    BUILTIN_TOOLKIT_PREFIXES = {"FileSystemTools", "ShellTools"}
+    
     def _execute_tool_call(self, tool_call: Dict[str, Any]) -> str:
         function = tool_call.get("function", {})
         tool_name = function.get("name", "")
@@ -112,14 +129,34 @@ class Agent:
         self.renderer.display_tool_call(tool_name, arguments)
         
         # Handle load_skill specially
-        if tool_name == "skills.load_skill": return self._load_skill(arguments.get("name", ""))
+        if tool_name == "skills.load_skill": 
+            result = self._load_skill(arguments.get("name", ""))
+            self.renderer.display_tool_result(result)
+            return result
         
         # Find toolkit
         if "." in tool_name: toolkit_name, method_name = tool_name.rsplit(".", 1)
         else: return f"Error: Invalid tool name '{tool_name}'"
         
-        if toolkit_name not in self.toolkits: return f"Error: Unknown toolkit '{toolkit_name}'"
-        toolkit = self.toolkits[toolkit_name]
+        # Check skill gating for non-built-in tools
+        if toolkit_name not in self.BUILTIN_TOOLKIT_PREFIXES:
+            if not self._is_skill_tool_allowed(toolkit_name):
+                error_msg = f"Error: Skill '{toolkit_name}' documentation not loaded. Call skills.load_skill with name='{toolkit_name}' first."
+                self.renderer.display_tool_result(error_msg)
+                return error_msg
+        
+        # Get toolkit from built-ins or skill registry
+        toolkit = None
+        if toolkit_name in self.toolkits:
+            toolkit = self.toolkits[toolkit_name]
+        elif hasattr(self.session, 'skill_registry'):
+            skill = self.session.skill_registry.get_skill(toolkit_name)
+            if skill and skill._toolkit:
+                toolkit = skill._toolkit
+        
+        if toolkit is None:
+            return f"Error: Unknown toolkit '{toolkit_name}'"
+        
         toolkit._lc_context = Context(session=self.session, config=self.session.config)
         
         # Dispatch & Render
@@ -128,9 +165,61 @@ class Agent:
         
         return result
     
+    def _is_skill_tool_allowed(self, skill_name: str) -> bool:
+        """Check if a skill tool is allowed to execute (loaded or pinned)."""
+        # Check if explicitly loaded
+        if skill_name in self.session.loaded_skills:
+            return True
+        
+        # Check if skill is pinned (always allowed)
+        if hasattr(self.session, 'skill_registry'):
+            skill = self.session.skill_registry.get_skill(skill_name)
+            if skill and skill.pinned:
+                return True
+        
+        return False
+    
     def _load_skill(self, skill_name: str) -> str:
-        # TODO: Implement skill loading from registry
-        return f"Skill '{skill_name}' loaded (placeholder)"
+        """Load skill documentation and mark skill as loaded."""
+        if not hasattr(self.session, 'skill_registry'):
+            return "Error: Skill registry not available"
+        
+        skill = self.session.skill_registry.get_skill(skill_name)
+        if not skill:
+            return f"Error: Skill '{skill_name}' not found"
+        
+        # Mark as loaded (idempotent)
+        if skill_name not in self.session.loaded_skills:
+            self.session.loaded_skills.append(skill_name)
+        
+        # Build response with skill documentation and available tools
+        lines = [f"# {skill.name}", ""]
+        
+        if skill.description:
+            lines.append(f"**Description:** {skill.description}")
+            lines.append("")
+        
+        if skill.version:
+            lines.append(f"**Version:** {skill.version}")
+            lines.append("")
+        
+        # List available tools
+        if skill.tools:
+            lines.append("## Available Tools")
+            lines.append("")
+            for tool_name, tool_spec in skill.tools.items():
+                short_name = tool_name.split('.')[-1]
+                desc = tool_spec.get("description", "").split('\n')[0] if tool_spec.get("description") else ""
+                lines.append(f"- `{short_name}`: {desc}")
+            lines.append("")
+        
+        # Add documentation content
+        if skill.content:
+            lines.append("## Documentation")
+            lines.append("")
+            lines.append(skill.content)
+        
+        return "\n".join(lines)
 
 
 class ModelBackend:

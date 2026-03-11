@@ -32,6 +32,10 @@ class Skill:
     @property
     def pinned(self) -> bool: return self.metadata.get('pinned', False)
     
+    @pinned.setter
+    def pinned(self, value: bool) -> None:
+        self.metadata['pinned'] = value
+    
     def load_toolkit(self):
         """Lazy-load the full toolkit implementation."""
         if self._toolkit is None:
