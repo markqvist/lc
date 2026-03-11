@@ -10,7 +10,7 @@ clean:
 	@-rm -rf ./*.egg-info
 	@echo Done
 
-build_sdist: purge_docs
+build_sdist:
 	python3 setup.py sdist
 
 build_wheel:
@@ -24,6 +24,6 @@ manual:
 
 build_spkg: remove_symlinks build_sdist create_symlinks
 
-release: build_sdist build_wheel build_pure_wheel
+release: build_sdist build_wheel
 
-debug: remove_symlinks build_wheel build_pure_wheel
+debug: remove_symlinks build_wheel
