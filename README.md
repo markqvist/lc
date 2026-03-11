@@ -213,7 +213,7 @@ Skills load on demand (or pin them to load immediately). The agent can request s
 
 Use `--gate` when experimenting. Use `--gate=3` when letting children use it. Use your judgment: Always.
 
-The tool gating system asks for confirmation before destructive operations. But remember: **you are the final safety mechanism**. Review what it plans to do. The AI does not have your context, your intent or remors. But I may very quickly have your backups.
+The tool gating system asks for confirmation before destructive operations. But remember: **you are the final safety mechanism**. Review what it plans to do. The AI does not have your context, your intent or any remorse. But it may very quickly have your backups.
 
 ## Limitations
 
