@@ -84,8 +84,10 @@ You can freely copy, share and distribute `lc` in binary or source form, as long
 ## Installation
 
 ```bash
-# For now: Download the release .whl and:
-pip install ./lc-0.1.2-py3-none-any.whl
+# For now: Install directly from repository
+# No guarantee the code is in a working state
+# at the point in time you do this.
+pip install git+https://github.com/markqvist/lc
 
 # When I get my act together and publish to PyPI:
 # pip install some_funky_package_name
