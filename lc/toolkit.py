@@ -11,12 +11,6 @@ from pydantic import BaseModel, create_model
 
 class Context:
     """Execution context passed to tools."""
-
-    @classmethod
-    def get():
-        # TODO: Implement getting active session context
-        # context = ToolkitContext(session=self.session, config=self.session.config)
-        return None
     
     def __init__(self, session=None, config=None):
         self.session = session
@@ -53,7 +47,11 @@ class Toolkit(ABC):
         self._tools: Dict[str, Callable] = {}
         self._schemas: Dict[str, Dict[str, Any]] = {}
         self._gate_levels: Dict[str, int] = {}
+        self._lc_context = None
         self._discover_tools()
+
+    @property
+    def context(self): return self._lc_context
     
     def _discover_tools(self) -> None:
         """Discover and register all tools in this toolkit."""

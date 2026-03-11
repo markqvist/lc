@@ -117,6 +117,7 @@ class Agent:
         
         if toolkit_name not in self.toolkits: return f"Error: Unknown toolkit '{toolkit_name}'"
         toolkit = self.toolkits[toolkit_name]
+        toolkit._lc_context = ToolkitContext(session=self.session, config=self.session.config)
         
         # Dispatch & Render
         result = toolkit.dispatch(tool_name=method_name, arguments=arguments, gate_level=self.gate_level)
