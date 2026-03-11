@@ -155,12 +155,6 @@ class Toolkit(ABC):
         if tool_name not in self._tools: return f"Error: Unknown tool '{tool_name}'"
         
         method = self._tools[tool_name]
-        tool_gate = self._gate_levels[tool_name]
-        
-        # Check gating
-        if gate_level is not None and tool_gate >= gate_level:
-            # TODO: Interactive confirmation
-            pass
         
         try:
             result = method(**arguments)

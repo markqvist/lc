@@ -16,11 +16,20 @@ if TYPE_CHECKING: from lc.session import Session
 class Agent:
     """Core agent orchestrating model interaction and tool execution."""
     
-    def __init__(self, session: "Session", model_backend, toolkits: Dict[str, Any], gate_level: Optional[int] = None):
+    # Gate level descriptions for user display
+    GATE_DESCRIPTIONS = {
+        0: "read-only operations",
+        1: "file write operations",
+        2: "command execution (read-only)",
+        3: "destructive/destructive execution",
+    }
+    
+    def __init__(self, session: "Session", model_backend, toolkits: Dict[str, Any], gate_level: Optional[int] = None, can_prompt: bool = False):
         self.session    = session
         self.model      = model_backend
         self.toolkits   = toolkits
         self.gate_level = gate_level
+        self.can_prompt = can_prompt
         self.renderer   = Renderer(show_reasoning=session.config.display.get("show_reasoning", True))
     
     def run_turn(self, user_input: str) -> str:
@@ -159,11 +168,57 @@ class Agent:
         
         toolkit._lc_context = Context(session=self.session, config=self.session.config)
         
+        # Check gating before dispatch
+        tool_gate = toolkit._gate_levels.get(method_name, toolkit.gate_level)
+        if self.gate_level is not None and tool_gate >= self.gate_level:
+            if not self._confirm_gate(tool_name, tool_gate, arguments):
+                denied_msg = f"Tool execution denied by user at gate level {self.gate_level} (tool requires level {tool_gate})"
+                self.renderer.display_tool_result(denied_msg)
+                return denied_msg
+        
         # Dispatch & Render
         result = toolkit.dispatch(tool_name=method_name, arguments=arguments, gate_level=self.gate_level)
         self.renderer.display_tool_result(result)
         
         return result
+    
+    def _confirm_gate(self, tool_name: str, tool_gate: int, arguments: Dict[str, Any]) -> bool:
+        """
+        Confirm gated tool execution with user.
+        
+        Returns True if execution should proceed, False otherwise.
+        """
+        # If we can't prompt (piped input), auto-deny
+        if not self.can_prompt:
+            return False
+        
+        # Build the prompt
+        gate_desc = self.GATE_DESCRIPTIONS.get(tool_gate, f"level {tool_gate}")
+        
+        # Format arguments for display (truncate long values)
+        args_display = []
+        for key, value in arguments.items():
+            value_str = str(value)
+            if len(value_str) > 60:
+                value_str = value_str[:57] + "..."
+            # Escape newlines for display
+            value_str = value_str.replace('\n', '\\n')
+            args_display.append(f"  {key}: {value_str}")
+        
+        args_str = '\n'.join(args_display) if args_display else "  (no arguments)"
+        
+        # Display the gate prompt
+        print(f"\n⚠ Gate level {tool_gate} ({gate_desc})")
+        print(f"Tool: {tool_name}")
+        print(f"Arguments:\n{args_str}")
+        
+        # Get user confirmation
+        try:
+            response = input("Allow? [y/N] ").strip().lower()
+            return response in ('y', 'yes')
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return False
     
     def _is_skill_tool_allowed(self, skill_name: str) -> bool:
         """Check if a skill tool is allowed to execute (loaded or pinned)."""

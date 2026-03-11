@@ -468,7 +468,7 @@ class Session:
             raise ValueError(f"Unknown backend type: {backend_type}")
     
     # Executes a single command
-    def execute(self, command: str, gate_level: Optional[int] = None) -> ExecutionResult:
+    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False) -> ExecutionResult:
         self.conversation.append({"role": "user", "content": command})
         
         try:
@@ -477,7 +477,7 @@ class Session:
             toolkits = self._load_toolkits()
             
             # Create agent and run turn
-            agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level)
+            agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt)
             output = agent.run_turn(command)
             
             self.turn_count += 1
@@ -488,7 +488,7 @@ class Session:
         except Exception as e: 
             return ExecutionResult(success=False, error=str(e))
     
-    def run_interactive(self, gate_level: Optional[int] = None) -> int:
+    def run_interactive(self, gate_level: Optional[int] = None, can_prompt: bool = True) -> int:
         import sys
         
         # Display resume context if this is a resumed session
@@ -510,7 +510,7 @@ class Session:
                 if user_input.lower() in ("exit", "quit"): 
                     break
                 
-                result = self.execute(user_input, gate_level=gate_level)
+                result = self.execute(user_input, gate_level=gate_level, can_prompt=can_prompt)
                 if result.error: 
                     print(f"Error: {result.error}", file=sys.stderr)
                 

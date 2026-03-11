@@ -151,8 +151,13 @@ lc> Actually, don't
 ### With Safety Gating
 
 ```bash
-$ lc --gate "Delete all files in /tmp"
-# lc will ask for confirmation before executing - maybe
+# Gate at level 2 (command execution and above)
+$ lc --gate 2 "Delete all files in /tmp"
+⚠ Gate level 2 (command execution)
+Tool: ShellTools.exec
+Arguments:
+  command: rm -rf /tmp/*
+Allow? [y/N]
 ```
 
 Gate levels:
@@ -160,6 +165,11 @@ Gate levels:
 - `1`: File writes (gated)
 - `2`: Shell execution, read-only (gated)
 - `3`: Destructive execution (gated)
+
+**Gating behavior:**
+- Interactive TTY: Prompts for confirmation on each gated tool call
+- Piped/non-TTY: Auto-denies gated operations (safety first)
+- Only `y` or `yes` (case-insensitive) allows execution
 
 ### Session Persistence
 

@@ -95,6 +95,9 @@ def main() -> int:
             parser.print_help()
             return 1
         
+        # Detect if we can prompt (TTY available)
+        can_prompt = sys.stdin.isatty() and sys.stdout.isatty()
+        
         session = Session.create_or_resume(
             config=config, 
             resume=args.resume or bool(args.session_id), 
@@ -104,7 +107,7 @@ def main() -> int:
         )
 
         if args.command:
-            result = session.execute(args.command, gate_level=args.gate)
+            result = session.execute(args.command, gate_level=args.gate, can_prompt=can_prompt)
             
             if result.error:
                 print(f"Error: {result.error}", file=sys.stderr)
@@ -114,7 +117,7 @@ def main() -> int:
         
         # Interactive mode
         if args.interactive or args.resume or not args.command:
-            return session.run_interactive(gate_level=args.gate)
+            return session.run_interactive(gate_level=args.gate, can_prompt=can_prompt)
         
         return 0
         
