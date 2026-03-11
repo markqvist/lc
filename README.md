@@ -33,9 +33,9 @@ Then you watch as the machine does the work. It plans. It executes. It reports. 
 
 ## The Philosophy
 
-`lc` was born from a simple observation: most agentic frameworks are bloated, opaque, and designed for cloud-scale Kubernetes deployments when what you actually need is to rename some files without reading seventeen man pages.
+`lc` was born from a simple observation: Most agentic frameworks are bloated, opaque, and designed for cloud-scale Kubernetes deployments when what you actually need is to rename some files without reading seventeen man pages.
 
-This is different:
+Humanity's Last Command is different:
 
 - **Truly local**: Runs on your machine, with your models, on your data.
 - **Auditable**: Small codebase, readable code, no 600k-line dependency nightmares.
