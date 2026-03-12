@@ -39,6 +39,7 @@ class OpenAIBackend(ModelBackend):
         - Removes reasoning_content fields (causes prefill issues)
         - Ensures content is null (not empty string) for assistant tool calls
         - Removes name field from non-tool messages
+        - Preserves multimodal content arrays (list-type content)
         """
         sanitized = []
         for msg in messages:
@@ -65,6 +66,8 @@ class OpenAIBackend(ModelBackend):
             # Handle system/user messages - remove name if present
             if clean_msg.get("role") in ("system", "user"):
                 clean_msg.pop("name", None)
+                # Preserve multimodal content arrays (list-type content for images)
+                # No transformation needed - pass through as-is
             
             sanitized.append(clean_msg)
         

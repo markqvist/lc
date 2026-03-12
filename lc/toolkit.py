@@ -28,11 +28,17 @@ class Context:
         return None
 
 
-def tool(func: Optional[Callable] = None, *, gate_level: Optional[int] = None):
-    """Decorator to mark a method as a tool."""
+def tool(func: Optional[Callable] = None, *, gate_level: Optional[int] = None, modality: str = "text"):
+    """Decorator to mark a method as a tool.
+    
+    Args:
+        gate_level: Security gating level for this tool (0-3)
+        modality: Content type returned by this tool ("text", "image", "audio", "video")
+    """
     def decorator(f):
         f._is_tool = True
         f._gate_level = gate_level
+        f._modality = modality
         return f
     
     if func is not None: return decorator(func)
@@ -46,6 +52,7 @@ class Toolkit(ABC):
         self._tools: Dict[str, Callable] = {}
         self._schemas: Dict[str, Dict[str, Any]] = {}
         self._gate_levels: Dict[str, int] = {}
+        self._modalities: Dict[str, str] = {}
         self._lc_context = None
         self._discover_tools()
 
@@ -63,6 +70,9 @@ class Toolkit(ABC):
         tool_gate = getattr(method, '_gate_level', None)
         if tool_gate is not None: self._gate_levels[name] = tool_gate
         else:                     self._gate_levels[name] = self.gate_level
+        
+        # Store modality (default to "text" for backward compatibility)
+        self._modalities[name] = getattr(method, '_modality', 'text')
     
     def _generate_schema(self, method: Callable) -> Dict[str, Any]:
         sig = inspect.signature(method)
@@ -128,9 +138,16 @@ class Toolkit(ABC):
                 "description": self._tools[name].__doc__ or "",
                 "parameters": schema,
                 "gate_level": self._gate_levels[name],
+                "modality": self._modalities.get(name, "text"),
             }
             for name, schema in self._schemas.items()
         }
+    
+    def get_modality(self, tool_name: str) -> str:
+        """Get the modality for a specific tool."""
+        if '.' in tool_name:
+            _, tool_name = tool_name.rsplit('.', 1)
+        return self._modalities.get(tool_name, "text")
     
     def dispatch(self, tool_name: str, arguments: Dict[str, Any], gate_level: Optional[int] = None) -> str:
         if '.' in tool_name: _, tool_name = tool_name.rsplit('.', 1)        

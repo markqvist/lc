@@ -44,7 +44,7 @@ class Filesystem(Toolkit):
         except Exception as e:
             return f"Error reading file: {e}"
     
-    @tool(gate_level=0)
+    @tool(gate_level=0, modality="image")
     def read_image(self, path: str) -> str:
         """
         Read an image file and return base64-encoded data.

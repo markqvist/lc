@@ -98,10 +98,32 @@ class Agent:
             assistant_msg = { "role": "assistant", "content": content, "tool_calls": tool_calls }
             self.session.conversation.append(assistant_msg)
             
+            # Track if we need to inject multimodal content
+            multimodal_content = []
+            
             for tool_call in tool_calls:
-                result = self._execute_tool_call(tool_call)
-                self.session.conversation.append({"role": "tool", "tool_call_id": tool_call.get("id"),
-                                                  "name": tool_call.get("function", {}).get("name"), "content": result})
+                result, modality = self._execute_tool_call(tool_call)
+                
+                # Handle image modality specially
+                if modality == "image":
+                    # Extract image data and create multimodal content
+                    image_content = self._create_image_content(result, tool_call)
+                    if image_content:
+                        multimodal_content.extend(image_content)
+                    # Add text description as tool result
+                    self.session.conversation.append({"role": "tool", "tool_call_id": tool_call.get("id"),
+                                                      "name": tool_call.get("function", {}).get("name"), "content": "Image loaded successfully"})
+                else:
+                    # Normal text result
+                    self.session.conversation.append({"role": "tool", "tool_call_id": tool_call.get("id"),
+                                                      "name": tool_call.get("function", {}).get("name"), "content": result})
+            
+            # Inject multimodal user message if we have image content
+            if multimodal_content:
+                self.session.conversation.append({
+                    "role": "user",
+                    "content": multimodal_content
+                })
             
             final_response = self._call_model(self._get_all_tools())
             return self._process_response(final_response)
@@ -122,7 +144,8 @@ class Agent:
     # Built-in toolkit prefixes that bypass skill gating
     BUILTIN_TOOLKIT_PREFIXES = {"Filesystem", "Shell", "Cryptography"}
     
-    def _execute_tool_call(self, tool_call: Dict[str, Any]) -> str:
+    def _execute_tool_call(self, tool_call: Dict[str, Any]) -> tuple[str, str]:
+        """Execute a tool call and return (result, modality)."""
         function = tool_call.get("function", {})
         tool_name = function.get("name", "")
         arguments_raw = function.get("arguments", "{}")
@@ -141,18 +164,18 @@ class Agent:
         if tool_name == "skills.load_skill": 
             result = self._load_skill(arguments.get("name", ""))
             self.renderer.display_tool_result(result)
-            return result
+            return result, "text"
         
         # Find toolkit
         if "." in tool_name: toolkit_name, method_name = tool_name.rsplit(".", 1)
-        else: return f"Error: Invalid tool name '{tool_name}'"
+        else: return f"Error: Invalid tool name '{tool_name}'", "text"
         
         # Check skill gating for non-built-in, non-standalone tools
         if toolkit_name not in self.BUILTIN_TOOLKIT_PREFIXES and toolkit_name not in self.toolkits:
             if not self._is_skill_tool_allowed(toolkit_name):
                 error_msg = f"Error: Skill '{toolkit_name}' documentation not loaded. Call skills.load_skill with name='{toolkit_name}' first."
                 self.renderer.display_tool_result(error_msg)
-                return error_msg
+                return error_msg, "text"
         
         # Get toolkit from built-ins or skill registry
         toolkit = None
@@ -164,9 +187,12 @@ class Agent:
                 toolkit = skill._toolkit
         
         if toolkit is None:
-            return f"Error: Unknown toolkit '{toolkit_name}'"
+            return f"Error: Unknown toolkit '{toolkit_name}'", "text"
         
         toolkit._lc_context = Context(session=self.session, config=self.session.config)
+        
+        # Get modality before dispatch
+        modality = toolkit.get_modality(method_name)
         
         # Check gating before dispatch
         tool_gate = toolkit._gate_levels.get(method_name, toolkit.gate_level)
@@ -174,13 +200,13 @@ class Agent:
             if not self._confirm_gate(tool_name, tool_gate, arguments):
                 denied_msg = f"Tool execution denied by user at gate level {self.gate_level} (tool requires level {tool_gate})"
                 self.renderer.display_tool_result(denied_msg)
-                return denied_msg
+                return denied_msg, "text"
         
         # Dispatch & Render
         result = toolkit.dispatch(tool_name=method_name, arguments=arguments, gate_level=self.gate_level)
-        self.renderer.display_tool_result(result)
+        self.renderer.display_tool_result(result, modality)
         
-        return result
+        return result, modality
     
     def _confirm_gate(self, tool_name: str, tool_gate: int, arguments: Dict[str, Any]) -> bool:
         """
@@ -234,6 +260,46 @@ class Agent:
         
         return False
     
+    def _create_image_content(self, image_data: str, tool_call: Dict[str, Any]) -> list:
+        """Create multimodal content array for an image.
+        
+        Args:
+            image_data: The data URI string (data:image/...;base64,...)
+            tool_call: The original tool call info for context
+        
+        Returns:
+            List of content parts for OpenAI multimodal format
+        """
+        import re
+        
+        # Extract filename from tool call arguments for context
+        function = tool_call.get("function", {})
+        arguments_raw = function.get("arguments", "{}")
+        if isinstance(arguments_raw, str):
+            try: arguments = json.loads(arguments_raw)
+            except: arguments = {}
+        else: arguments = arguments_raw
+        
+        path = arguments.get("path", "image")
+        filename = path.split("/")[-1] if "/" in path else path
+        
+        # Validate image_data format
+        if not image_data.startswith("data:image/"):
+            return [{"type": "text", "text": f"[Invalid image data for {filename}]"}]
+        
+        # Parse data URI to extract mime type and data
+        match = re.match(r"data:([^;]+);base64,(.+)", image_data)
+        if not match:
+            return [{"type": "text", "text": f"[Could not parse image data for {filename}]"}]
+        
+        mime_type, base64_data = match.groups()
+        
+        # Return multimodal content array
+        return [
+            {"type": "text", "text": f"Image: {filename}"},
+            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_data}"}}
+        ]
+
     def _load_skill(self, skill_name: str) -> str:
         """Load skill documentation and mark skill as loaded."""
         if not hasattr(self.session, 'skill_registry'): return "Error: Skill registry not available"
