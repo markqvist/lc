@@ -2,6 +2,7 @@
 
 """Command-line interface for lc."""
 
+import RNS
 import argparse
 import time
 import sys
@@ -61,7 +62,8 @@ def list_sessions(config: Config) -> int:
     print("-" * 120)
     
     for session in sessions:
-        name = session.get("name", "")[:18]
+        session_name = session.get("name", "") or ""
+        name = session_name[:18]
         sid = session.get("session_id", "")[:36]
         msg_count = len([m for m in session.get("conversation", []) if m.get("role") in ("user", "assistant")])
         updated = session.get("updated_at", 0)
@@ -211,7 +213,9 @@ def main() -> int:
         if args.verbose:
             import traceback
             traceback.print_exc()
-        else: print(f"Error: {e}", file=sys.stderr)
+        else:
+            print(f"Error: {e}", file=sys.stderr)
+            RNS.trace_exception(e)
         return 1
 
 if __name__ == "__main__": sys.exit(main())

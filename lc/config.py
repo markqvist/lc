@@ -24,6 +24,9 @@ class Config:
         (config_path / "templates").mkdir(exist_ok=True)
         (config_path / "skills").mkdir(exist_ok=True)
 
+        RNS.logdest = RNS.LOG_FILE
+        RNS.logfile = os.path.expanduser((config_path / "logfile"))
+
         sysprompt_path = (config_path / "templates" / "system.jinja")
         if not os.path.isfile(sysprompt_path):
             with open(sysprompt_path, "wb") as fh:
@@ -39,8 +42,9 @@ class Config:
             spec       = ConfigObj(CONFIG_SPEC.splitlines())
             data       = ConfigObj(os.path.expanduser(config_file), configspec=spec, write_empty_values=True)
 
-            if not "stdin" in data:   data["stdin"]   = {}
+            if not "stdin"   in data: data["stdin"]   = {}
             if not "loading" in data: data["loading"] = {}
+            if not "logging" in data: data["logging"] = {}
 
             if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]   = []
             if not data.get("toolkits",  {}).get("custom",      {}): data["toolkits"]["custom"]    = []
@@ -49,6 +53,7 @@ class Config:
             if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"] = []
             if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]      = []
             if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]    = "system.jinja"
+            if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]      = 4
             
             if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
             if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = False
@@ -59,6 +64,9 @@ class Config:
             if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
 
             validation = data.validate(Validator())
+
+            RNS.loglevel = data["logging"]["level"]
+            RNS.log(f"Configuration loaded from {config_file}", RNS.LOG_DEBUG)
 
             def is_invalid(data: dict) -> bool:
                 for key, value in data.items():
@@ -195,6 +203,9 @@ stream_output = boolean
 [stdin]
 max_text_bytes = integer
 max_binary_bytes = integer
+
+[logging]
+level = integer
 """
 
 DEFAULT_CONFIG = """[model]
@@ -236,6 +247,9 @@ stream_output = true
 [stdin]
 max_text_bytes = 16384
 max_binary_bytes = 512
+
+[logging]
+level = 4
 """
 
 DEFAULT_SYSPROMPT = """You are lc (Humanity's Last Command), an excellent terminal assistant.

@@ -79,6 +79,8 @@ class SessionManager:
     @classmethod
     def set_active_session(cls, config: Config, session_id: str) -> None:
         """Update the active session symlink."""
+        RNS.log(f"Updating active session symlink to {session_id}", RNS.LOG_DEBUG)
+
         sessions_dir = config.path / "sessions"
         active_link = sessions_dir / "active"
         session_file = sessions_dir / f"{session_id}.msgpack"
@@ -90,9 +92,7 @@ class SessionManager:
         
         # Create new symlink (relative path)
         try: active_link.symlink_to(session_file.name)
-        
-        # Symlinks may not be supported on all platforms
-        except Exception: pass
+        except Exception as e: RNS.log(f"Could not update active session symlink: {e}", RNS.LOG_ERROR)
 
 
 class Session:
@@ -142,6 +142,7 @@ class Session:
     def create(cls, config: Config, session_name: Optional[str] = None) -> "Session":
         session = cls(config, session_name=session_name)
         session._initialize()
+        session.save()
         session._update_active_link()
         return session
     
