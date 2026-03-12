@@ -161,10 +161,10 @@ Allow? [y/N]
 ```
 
 Gate levels:
-- `0`: Read-only operations (always allowed)
-- `1`: File writes (gated)
-- `2`: Shell execution, read-only (gated)
-- `3`: Destructive execution (gated)
+- `0`: Read-only operations
+- `1`: File writes
+- `2`: Shell execution, read-only
+- `3`: Destructive execution
 
 **Gating behavior:**
 - Interactive TTY: Prompts for confirmation on each gated tool call
