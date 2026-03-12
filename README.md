@@ -160,7 +160,7 @@ Arguments:
 Allow? [y/N]
 ```
 
-Gate levels:
+**Gate levels:**
 - `0`: Read-only operations
 - `1`: File writes
 - `2`: Shell execution, read-only
