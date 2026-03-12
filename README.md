@@ -212,8 +212,8 @@ $ cat data.csv | lc "Find anomalies in this data"
 ```
 
 When both a command argument and stdin are provided, stdin is inserted as a separate user message before your command. The model sees:
-1. "[Received via stdin]: [piped content]"
-2. "[your command argument]"
+1. "[Received via stdin]: (piped content)"
+2. "(your command argument)"
 
 **Configuration** (in `~/.lc/config`):
 ```ini
