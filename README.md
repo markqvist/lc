@@ -231,7 +231,7 @@ Binary data is automatically detected and formatted as a hex dump with a warning
 
 ## Writing Tools
 
-Tools are just Python. Create a `Toolkit`:
+Tools are just Python. Write a `Toolkit`:
 
 ```python
 from lc.toolkit import Toolkit, tool
@@ -243,14 +243,7 @@ class MyTools(Toolkit):
         return f"Hello, {name}! Working in: {self.context.session.working_dir}"
 ```
 
-Register in config:
-
-```ini
-[toolkits]
-custom = mymodule.MyTools
-```
-
-That's it. No YAML schemas. No protobuf definitions. Just code.
+Then drop your toolkits into `~/.lc/tools`. That's it. No YAML schemas. No protobuf definitions. Just code.
 
 ## Writing Resolvers
 
@@ -267,7 +260,7 @@ class GitResolver(Resolver):
 
 ## Skills
 
-Skills for `lc` are different. They can contain anything needed to do anything. Documentation, domain knowledge, tools, code, a pre-compiled Commodore 64 emulator to pretend you're still young. Needless to say, this is frightening. You be the judge on how to handle this.
+Skills for `lc` are different. They can contain anything needed to do anything. Documentation, domain knowledge, operating procedures, tools, code, a pre-compiled Commodore 64 emulator to pretend you're still young. Needless to say, this is frightening. You be the judge on how to handle this.
 
 Create the skills you need, and drop them in `~/.lc/skills/`:
 
