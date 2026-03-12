@@ -117,7 +117,7 @@ model = local-model
 api_key = not-needed-for-local
 
 [toolkits]
-builtin = filesystem, shell
+builtin = filesystem, shell, cryptography
 
 [resolvers]
 builtin = environment, filesystem, system
@@ -154,7 +154,7 @@ lc> Actually, don't
 # Gate at level 2 (command execution and above)
 $ lc --gate 2 "Delete all files in /tmp"
 ⚠ Gate level 2 (command execution)
-Tool: ShellTools.exec
+Tool: Shell.exec
 Arguments:
   command: rm -rf /tmp/*
 Allow? [y/N]

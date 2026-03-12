@@ -45,7 +45,7 @@ class MockBackend(ModelBackend):
                             "id": f"call_{self.response_count}",
                             "type": "function",
                             "function": {
-                                "name": "FileSystemTools.list_dir",
+                                "name": "Filesystem.list_dir",
                                 "arguments": json.dumps({"path": "."}),
                             }
                         }

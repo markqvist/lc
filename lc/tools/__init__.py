@@ -2,8 +2,8 @@
 
 """Built-in toolkits for lc."""
 
-from lc.tools.filesystem import FileSystemTools
-from lc.tools.shell import ShellTools
+from lc.tools.filesystem import Filesystem
+from lc.tools.shell import Shell
 from lc.tools.cryptography import Cryptography
 
-__all__ = ["FileSystemTools", "ShellTools", "Cryptography"]
+__all__ = ["Filesystem", "Shell", "Cryptography"]

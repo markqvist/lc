@@ -118,7 +118,7 @@ class Agent:
         return content
     
     # Built-in toolkit prefixes that bypass skill gating
-    BUILTIN_TOOLKIT_PREFIXES = {"FileSystemTools", "ShellTools", "Cryptography"}
+    BUILTIN_TOOLKIT_PREFIXES = {"Filesystem", "Shell", "Cryptography"}
     
     def _execute_tool_call(self, tool_call: Dict[str, Any]) -> str:
         function = tool_call.get("function", {})

@@ -18,7 +18,7 @@ class Cryptography(Toolkit):
     @tool(gate_level=0)
     def own_identity(self) -> str:
         """
-        Returns your own Reticulum Identity Hash as a string in hexadecimal.
+        Returns your own agent Reticulum Identity Hash as a string in hexadecimal.
         
         Returns: Your Reticulum Identity Hash, or error message
         """
@@ -72,7 +72,7 @@ class Cryptography(Toolkit):
         """
         Validates the signature of a file. Expects a Reticulum `[ORIGINAL_FILENAME].rsg`
         signature file to exist in the same path as the verification target. By default,
-        this tool verifies *that your own* identity signed the file, but can optionally
+        this tool verifies *that your own* agent identity signed the file, but can optionally
         validate signatures made by other identites by passing a Reticulum Identity Hash
         as the `signer_identity_hash` argument.
         

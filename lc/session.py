@@ -381,16 +381,16 @@ class Session:
         print(f"\n{'─' * 60}\n")
     
     def _load_toolkits(self) -> Dict[str, Any]:
-        from lc.tools import FileSystemTools, ShellTools, Cryptography
+        from lc.tools import Filesystem, Shell, Cryptography
         from lc.toolloader import ToolLoader
         
         toolkits = {}
         toolkit_config = self.config.toolkits
         builtin_names = toolkit_config.get("builtin", ["filesystem", "shell", "cryptography"])
         
-        if "filesystem" in builtin_names:   toolkits["FileSystemTools"] = FileSystemTools()
-        if "shell" in builtin_names:        toolkits["ShellTools"]      = ShellTools()
-        if "cryptography" in builtin_names: toolkits["Cryptography"]    = Cryptography()
+        if "filesystem" in builtin_names:   toolkits["Filesystem"]   = Filesystem()
+        if "shell" in builtin_names:        toolkits["Shell"]        = Shell()
+        if "cryptography" in builtin_names: toolkits["Cryptography"] = Cryptography()
         
         # Load standalone tools from configured directories
         tool_dirs = self._get_tool_directories()

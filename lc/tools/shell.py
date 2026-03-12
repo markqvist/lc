@@ -9,7 +9,7 @@ from typing import Optional
 
 from lc.toolkit import Toolkit, tool
 
-class ShellTools(Toolkit):
+class Shell(Toolkit):
     """Toolkit for shell command execution."""
     
     gate_level = 2  # Execution required

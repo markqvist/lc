@@ -8,7 +8,7 @@ from typing import Optional
 from lc.toolkit import Toolkit, tool
 
 
-class FileSystemTools(Toolkit):
+class Filesystem(Toolkit):
     """Toolkit for filesystem operations."""
     
     gate_level = 0
