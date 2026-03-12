@@ -234,45 +234,18 @@ class Agent:
     
     def _load_skill(self, skill_name: str) -> str:
         """Load skill documentation and mark skill as loaded."""
-        if not hasattr(self.session, 'skill_registry'):
-            return "Error: Skill registry not available"
+        if not hasattr(self.session, 'skill_registry'): return "Error: Skill registry not available"
         
         skill = self.session.skill_registry.get_skill(skill_name)
-        if not skill:
-            return f"Error: Skill '{skill_name}' not found"
+        if not skill: return f"Error: Skill '{skill_name}' not found"
         
-        # Mark as loaded (idempotent)
-        if skill_name not in self.session.loaded_skills:
-            self.session.loaded_skills.append(skill_name)
+        if skill_name not in self.session.loaded_skills: self.session.loaded_skills.append(skill_name)
+
+        if skill.content: full_skill = skill.content
+        else:             full_skill = "Error: Could not load skill content for \"{skill_name}\""
         
-        # Build response with skill documentation and available tools
-        lines = [f"# {skill.name}", ""]
-        
-        if skill.description:
-            lines.append(f"**Description:** {skill.description}")
-            lines.append("")
-        
-        if skill.version:
-            lines.append(f"**Version:** {skill.version}")
-            lines.append("")
-        
-        # List available tools
-        if skill.tools:
-            lines.append("## Available Tools")
-            lines.append("")
-            for tool_name, tool_spec in skill.tools.items():
-                short_name = tool_name.split('.')[-1]
-                desc = tool_spec.get("description", "").split('\n')[0] if tool_spec.get("description") else ""
-                lines.append(f"- `{short_name}`: {desc}")
-            lines.append("")
-        
-        # Add documentation content
-        if skill.content:
-            lines.append("## Documentation")
-            lines.append("")
-            lines.append(skill.content)
-        
-        return "\n".join(lines)
+        RNS.log(f"Returning skill to agent:\n{full_skill}", RNS.LOG_DEBUG) # TODO: Clean initial debug logging
+        return full_skill
 
 
 class ModelBackend:

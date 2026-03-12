@@ -87,6 +87,7 @@ class SkillsResolver(Resolver):
         
         if unpinned:
             lines.append("## Loadable Skills (Load with skills.load_skill)")
+            lines.append("**Important**: To call tools from loadable skills, you must load the relevant skill first, and read any relevant documentation relating to their use.")
             lines.append("")
             for skill in unpinned:
                 desc = skill.get("description", "").strip()
@@ -101,5 +102,4 @@ class SkillsResolver(Resolver):
             lines.append("*No skills installed*")
         
         summary = "\n".join(lines)
-        RNS.log(f"Skills summary\n{summary}", RNS.LOG_DEBUG)
         return summary

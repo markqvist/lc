@@ -79,7 +79,7 @@ class SessionManager:
     @classmethod
     def set_active_session(cls, config: Config, session_id: str) -> None:
         """Update the active session symlink."""
-        RNS.log(f"Updating active session symlink to {session_id}", RNS.LOG_DEBUG)
+        RNS.log(f"Updating active session symlink to {session_id}", RNS.LOG_DEBUG) # TODO: Clean initial debug logging
 
         sessions_dir = config.path / "sessions"
         active_link = sessions_dir / "active"
