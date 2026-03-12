@@ -7,7 +7,7 @@ import json
 from typing import List, Dict, Any, Optional, Iterator, TYPE_CHECKING
 
 from lc.config import Config
-from lc.rendering import Renderer
+from lc.rendering import TTYRenderer
 from lc.toolkit import Context
 
 if TYPE_CHECKING: from lc.session import Session
@@ -17,12 +17,10 @@ class Agent:
     """Core agent orchestrating model interaction and tool execution."""
     
     # Gate level descriptions for user display
-    GATE_DESCRIPTIONS = {
-        0: "read-only operations",
-        1: "file write operations",
-        2: "command execution (read-only)",
-        3: "destructive/destructive execution",
-    }
+    GATE_DESCRIPTIONS = { 0: "read-only operations",
+                          1: "file write operations",
+                          2: "command execution (read-only)",
+                          3: "destructive/destructive execution" }
     
     def __init__(self, session: "Session", model_backend, toolkits: Dict[str, Any], gate_level: Optional[int] = None, can_prompt: bool = False):
         self.session    = session
@@ -30,7 +28,7 @@ class Agent:
         self.toolkits   = toolkits
         self.gate_level = gate_level
         self.can_prompt = can_prompt
-        self.renderer   = Renderer(show_reasoning=session.config.display.get("show_reasoning", True))
+        self.renderer   = TTYRenderer(show_reasoning=session.config.display.get("show_reasoning", True))
     
     def run_turn(self, user_input: str) -> str:
         # Note: User message already added by session.execute()
@@ -120,7 +118,7 @@ class Agent:
         return content
     
     # Built-in toolkit prefixes that bypass skill gating
-    BUILTIN_TOOLKIT_PREFIXES = {"FileSystemTools", "ShellTools"}
+    BUILTIN_TOOLKIT_PREFIXES = {"FileSystemTools", "ShellTools", "Cryptography"}
     
     def _execute_tool_call(self, tool_call: Dict[str, Any]) -> str:
         function = tool_call.get("function", {})

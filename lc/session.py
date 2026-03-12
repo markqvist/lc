@@ -2,6 +2,7 @@
 
 """Session management for lc."""
 
+import os
 import RNS
 import uuid
 import time
@@ -108,6 +109,13 @@ class Session:
         self.updated_at = self.created_at
         self.working_dir = Path.cwd()
         self.jinja = jinja2.Environment(undefined=jinja2.Undefined)
+
+        # Agent identity
+        if not os.path.isfile(self.config.identity_path):
+            new_identity = RNS.Identity()
+            new_identity.to_file(self.config.identity_path)
+
+        self.identity = RNS.Identity.from_file(self.config.identity_path)
         
         # Conversation state
         self.conversation: List[Dict[str, Any]] = []
@@ -373,15 +381,16 @@ class Session:
         print(f"\n{'─' * 60}\n")
     
     def _load_toolkits(self) -> Dict[str, Any]:
-        from lc.tools import FileSystemTools, ShellTools
+        from lc.tools import FileSystemTools, ShellTools, Cryptography
         from lc.toolloader import ToolLoader
         
         toolkits = {}
         toolkit_config = self.config.toolkits
-        builtin_names = toolkit_config.get("builtin", ["filesystem", "shell"])
+        builtin_names = toolkit_config.get("builtin", ["filesystem", "shell", "cryptography"])
         
-        if "filesystem" in builtin_names: toolkits["FileSystemTools"] = FileSystemTools()
-        if "shell" in builtin_names:      toolkits["ShellTools"] = ShellTools()
+        if "filesystem" in builtin_names:   toolkits["FileSystemTools"] = FileSystemTools()
+        if "shell" in builtin_names:        toolkits["ShellTools"]      = ShellTools()
+        if "cryptography" in builtin_names: toolkits["Cryptography"]    = Cryptography()
         
         # Load standalone tools from configured directories
         tool_dirs = self._get_tool_directories()

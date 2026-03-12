@@ -4,5 +4,6 @@
 
 from lc.tools.filesystem import FileSystemTools
 from lc.tools.shell import ShellTools
+from lc.tools.cryptography import Cryptography
 
-__all__ = ["FileSystemTools", "ShellTools"]
+__all__ = ["FileSystemTools", "ShellTools", "Cryptography"]

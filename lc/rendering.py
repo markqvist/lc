@@ -4,7 +4,7 @@ import sys
 import random
 from typing import Optional
 
-class Renderer:
+class TTYRenderer:
 
     # ANSI codes
     RESET = "\033[0m"

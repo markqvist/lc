@@ -97,6 +97,9 @@ class Config:
     def template_path(self) -> Path: return (self._path / "templates")
     
     @property
+    def identity_path(self) -> Path: return (self._path / "agent_identity.rid")
+    
+    @property
     def model(self) -> Dict[str, Any]: return self._data.get("model", {})
 
     @property
@@ -205,7 +208,7 @@ max_tokens = 4096
 context_limit = 128000
 
 [toolkits]
-builtin = filesystem, shell
+builtin = filesystem, shell, cryptography
 custom =
 
 [resolvers]
