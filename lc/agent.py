@@ -243,6 +243,8 @@ class Agent:
 
         if skill.content: full_skill = skill.content
         else:             full_skill = "Error: Could not load skill content for \"{skill_name}\""
+
+        full_skill += f"\n\n---\n\nIf the skill documentation references additional documentation or resources, you can find them in `{skill.path}`, and you may read them now if required."
         
         RNS.log(f"Returning skill to agent:\n{full_skill}", RNS.LOG_DEBUG) # TODO: Clean initial debug logging
         return full_skill
