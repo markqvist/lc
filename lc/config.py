@@ -39,25 +39,24 @@ class Config:
             spec       = ConfigObj(CONFIG_SPEC.splitlines())
             data       = ConfigObj(os.path.expanduser(config_file), configspec=spec, write_empty_values=True)
 
+            if not "stdin" in data:   data["stdin"]   = {}
+            if not "loading" in data: data["loading"] = {}
+
             if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]   = []
             if not data.get("toolkits",  {}).get("custom",      {}): data["toolkits"]["custom"]    = []
             if not data.get("resolvers", {}).get("builtin",     {}): data["resolvers"]["builtin"]  = []
             if not data.get("resolvers", {}).get("custom",      {}): data["resolvers"]["custom"]   = []
             if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"] = []
             if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]      = []
-            
-            if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]   = True
-            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]    = False
-            if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"]= False
-            if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"] = False
-
-            # Ensure stdin section exists with defaults
-            if "stdin" not in data:
-                data["stdin"] = {}
-            if not data["stdin"].get("max_text_bytes", {}): data["stdin"]["max_text_bytes"] = 16384
-            if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
-            
             if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]    = "system.jinja"
+            
+            if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
+            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = False
+            if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"] = False
+            if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"]  = False
+
+            if not data["stdin"].get("max_text_bytes", {}):   data["stdin"]["max_text_bytes"]   = 16384
+            if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
 
             validation = data.validate(Validator())
 
@@ -127,20 +126,16 @@ class Config:
     @property
     def loading(self) -> Dict[str, bool]:
         ld = self._data.get("loading", {})
-        return {
-            "user_skills": ld.get("user_skills", True),      # Default: enabled for backward compat
-            "user_tools": ld.get("user_tools", False),        # Default: disabled (security)
-            "project_skills": ld.get("project_skills", False), # Default: disabled (security)
-            "project_tools": ld.get("project_tools", False),   # Default: disabled (security)
-        }
+        return { "user_skills":    ld.get("user_skills", True),
+                 "user_tools":     ld.get("user_tools", False),
+                 "project_skills": ld.get("project_skills", False),
+                 "project_tools":  ld.get("project_tools", False) }
 
     @property
     def stdin(self) -> Dict[str, int]:
         si = self._data.get("stdin", {})
-        return {
-            "max_text_bytes": si.get("max_text_bytes", 16384),    # 16KB default for text
-            "max_binary_bytes": si.get("max_binary_bytes", 512),  # 512 bytes default for binary
-        }
+        return { "max_text_bytes": si.get("max_text_bytes", 16384),
+                 "max_binary_bytes": si.get("max_binary_bytes", 512) }
     
     def _parse_list(self, value: Any) -> List[str]:
         if not value: return []

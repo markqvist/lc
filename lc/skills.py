@@ -15,7 +15,7 @@ class Skill:
         self.metadata = metadata
         self.content = content
         self.tools: Dict[str, Any] = {}  # Tool signatures only (lazy-loaded)
-        self._toolkit = None  # Full toolkit (lazy-loaded)
+        self._toolkit = None             # Full toolkit (lazy-loaded)
     
     @property
     def name(self) -> str: return self.metadata.get('name', self.path.name)
@@ -37,7 +37,6 @@ class Skill:
         self.metadata['pinned'] = value
     
     def load_toolkit(self):
-        """Lazy-load the full toolkit implementation."""
         if self._toolkit is None:
             # TODO: Import and instantiate toolkit from skill directory
             pass

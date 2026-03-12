@@ -12,7 +12,6 @@ from pydantic import BaseModel, create_model
 
 
 class Context:
-    """Execution context passed to tools."""
     
     def __init__(self, session=None, config=None):
         self.session = session
@@ -41,8 +40,6 @@ def tool(func: Optional[Callable] = None, *, gate_level: Optional[int] = None):
 
 
 class Toolkit(ABC):
-    """Base class for tool collections."""
-    
     gate_level: int = 0
     
     def __init__(self):
@@ -56,22 +53,18 @@ class Toolkit(ABC):
     def context(self): return self._lc_context
     
     def _discover_tools(self) -> None:
-        """Discover and register all tools in this toolkit."""
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
             if hasattr(method, '_is_tool'): self._register_tool(name, method)
     
     def _register_tool(self, name: str, method: Callable) -> None:
-        """Register a tool and generate its schema."""
         self._tools[name] = method
         self._schemas[name] = self._generate_schema(method)
         
-        # Determine gate level
         tool_gate = getattr(method, '_gate_level', None)
         if tool_gate is not None: self._gate_levels[name] = tool_gate
         else:                     self._gate_levels[name] = self.gate_level
     
     def _generate_schema(self, method: Callable) -> Dict[str, Any]:
-        """Generate JSON schema for tool parameters."""
         sig = inspect.signature(method)
         type_hints = get_type_hints(method)
         
@@ -79,17 +72,13 @@ class Toolkit(ABC):
         required = []
         
         for name, param in sig.parameters.items():
-            # Skip 'self'
             if name in ('self'): continue
             
-            param_schema = {}
-            
-            # Get type hint
+            param_schema = {}            
             if name in type_hints:
                 param_type = type_hints[name]
                 param_schema.update(self._type_to_schema(param_type))
             
-            # Check if required
             if param.default is inspect.Parameter.empty: required.append(name)
             else:                                        param_schema['default'] = param.default
             
@@ -107,17 +96,13 @@ class Toolkit(ABC):
         return schema
     
     def _type_to_schema(self, param_type: type) -> Dict[str, Any]:
-        """Convert Python type to JSON schema type."""
-        type_map = {
-            str: {"type": "string"},
-            int: {"type": "integer"},
-            float: {"type": "number"},
-            bool: {"type": "boolean"},
-            list: {"type": "array"},
-            dict: {"type": "object"},
-        }
+        type_map = { str: {"type": "string"},
+                     int: {"type": "integer"},
+                     float: {"type": "number"},
+                     bool: {"type": "boolean"},
+                     list: {"type": "array"},
+                     dict: {"type": "object"} }
         
-        # Handle Pydantic models
         if isinstance(param_type, type) and issubclass(param_type, BaseModel): return param_type.model_json_schema()
         
         # Handle List[X] and Optional[X]
@@ -148,12 +133,8 @@ class Toolkit(ABC):
         }
     
     def dispatch(self, tool_name: str, arguments: Dict[str, Any], gate_level: Optional[int] = None) -> str:
-        """Dispatch a tool call."""
-        # Strip toolkit prefix if present
-        if '.' in tool_name: _, tool_name = tool_name.rsplit('.', 1)
-        
+        if '.' in tool_name: _, tool_name = tool_name.rsplit('.', 1)        
         if tool_name not in self._tools: return f"Error: Unknown tool '{tool_name}'"
-        
         method = self._tools[tool_name]
         
         try:

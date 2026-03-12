@@ -16,6 +16,7 @@ from RNS.vendor import umsgpack
 from lc.config import Config
 from lc.agent import Agent
 from lc.models.openai import OpenAIBackend
+from lc.models.mock import MockBackend
 
 
 @dataclass
@@ -40,14 +41,12 @@ class SessionManager:
         sessions = []
         for session_file in sessions_dir.glob("*.msgpack"):
             try:
-                with open(session_file, "rb") as f:
-                    data = umsgpack.unpack(f)
-                # Add filename for reference
+                with open(session_file, "rb") as f: data = umsgpack.unpack(f)
                 data["_file"] = session_file.name
                 sessions.append(data)
-            except Exception:
-                # Skip corrupted session files
-                continue
+            
+            # Skip corrupted session files
+            except Exception: continue
         
         # Sort by updated_at descending (most recent first)
         sessions.sort(key=lambda s: s.get("updated_at", 0), reverse=True)
@@ -55,27 +54,25 @@ class SessionManager:
     
     @classmethod
     def find_session_by_name(cls, config: Config, name: str) -> Optional[Path]:
-        """Find a session file by its human-readable name."""
         sessions = cls.list_sessions(config)
         for session in sessions:
             if session.get("name") == name:
                 session_id = session.get("session_id")
-                if session_id:
-                    return config.path / "sessions" / f"{session_id}.msgpack"
+                if session_id: return config.path / "sessions" / f"{session_id}.msgpack"
+        
         return None
     
     @classmethod
     def get_active_session(cls, config: Config) -> Optional[Path]:
-        """Get the path to the active session symlink."""
         active_link = config.path / "sessions" / "active"
         if active_link.exists():
-            # Follow symlink
+            # Valid symlink, follow
             target = active_link.resolve()
-            if target.exists():
-                return target
-            else:
-                # Broken symlink, remove it
-                active_link.unlink()
+            if target.exists(): return target
+            
+            # Broken symlink, remove it
+            else: active_link.unlink()
+
         return None
     
     @classmethod
@@ -85,26 +82,23 @@ class SessionManager:
         active_link = sessions_dir / "active"
         session_file = sessions_dir / f"{session_id}.msgpack"
         
-        if not session_file.exists():
-            return
+        if not session_file.exists(): return
         
         # Remove existing symlink if present
-        if active_link.exists() or active_link.is_symlink():
-            active_link.unlink()
+        if active_link.exists() or active_link.is_symlink(): active_link.unlink()
         
         # Create new symlink (relative path)
-        try:
-            active_link.symlink_to(session_file.name)
-        except Exception:
-            # Symlinks may not be supported on all platforms
-            pass
+        try: active_link.symlink_to(session_file.name)
+        
+        # Symlinks may not be supported on all platforms
+        except Exception: pass
 
 
 class Session:
     """Manages agent session state and execution flow."""
     
-    SESSION_VERSION = 1
-    CONTEXT_PREVIEW_MESSAGES = 4  # Number of recent messages to show on resume
+    SESSION_VERSION          = 1
+    CONTEXT_PREVIEW_MESSAGES = 4 # Number of recent messages to show on resume
     
     def __init__(self, config: Config, session_id: Optional[str] = None, session_name: Optional[str] = None):
         self.config = config
@@ -144,32 +138,22 @@ class Session:
         return session
     
     @classmethod
-    def create_or_resume(
-        cls, 
-        config: Config, 
-        resume: bool = False, 
-        session_id: Optional[str] = None,
-        session_name: Optional[str] = None,
-        rebuild_system_prompt: bool = False
-    ) -> "Session":
+    def create_or_resume(cls,  config: Config,  resume: bool = False,  session_id: Optional[str] = None,
+                         session_name: Optional[str] = None, rebuild_system_prompt: bool = False) -> "Session":
+
         if resume or session_id:
             existing = cls.load(config, session_id, rebuild_system_prompt=rebuild_system_prompt)
             if existing: 
                 existing._is_resumed = True
                 return existing
-            elif session_id:
-                # Specific session requested but not found - error
-                raise ValueError(f"Session not found: {session_id}")
+            
+            # Specific session requested but not found - error
+            elif session_id: raise ValueError(f"Session not found: {session_id}")
         
         return cls.create(config, session_name=session_name)
     
     @classmethod
-    def load(
-        cls, 
-        config: Config, 
-        session_id: Optional[str] = None,
-        rebuild_system_prompt: bool = False
-    ) -> Optional["Session"]:
+    def load(cls,  config: Config,  session_id: Optional[str] = None, rebuild_system_prompt: bool = False) -> Optional["Session"]:
         sessions_dir = config.path / "sessions"
         
         if session_id:
@@ -179,35 +163,29 @@ class Session:
             # If not found, try as name
             if not session_file.exists():
                 named_file = SessionManager.find_session_by_name(config, session_id)
-                if named_file:
-                    session_file = named_file
+                if named_file: session_file = named_file
+        
         else:
             # Try active symlink first
             active_file = SessionManager.get_active_session(config)
-            if active_file:
-                session_file = active_file
+            if active_file: session_file = active_file
             else:
                 # Fall back to most recent session
                 session_files = sorted(sessions_dir.glob("*.msgpack"), key=lambda p: p.stat().st_mtime)
-                if not session_files: 
-                    return None
+                if not session_files: return None
                 session_file = session_files[-1]
         
-        if not session_file.exists(): 
-            return None
+        if not session_file.exists(): return None
         
         try:
-            with open(session_file, "rb") as f:
-                data = umsgpack.unpack(f)
+            with open(session_file, "rb") as f: data = umsgpack.unpack(f)
             session = cls._from_dict(config, data, rebuild_system_prompt=rebuild_system_prompt)
             session._update_active_link()
             return session
 
-        except Exception: 
-            return None
+        except Exception: return None
     
     def _update_active_link(self) -> None:
-        """Update the active session symlink to point to this session."""
         SessionManager.set_active_session(self.config, self.session_id)
     
     def _initialize(self) -> None:
@@ -225,26 +203,22 @@ class Session:
         
         # Built-in skills (always loaded)
         builtin_dir = Path(__file__).parent / "skills"
-        if builtin_dir.exists():
-            skill_dirs.append(builtin_dir)
+        if builtin_dir.exists(): skill_dirs.append(builtin_dir)
         
         # User skills in config directory (configurable, default: enabled)
         if loading_config.get("user_skills", True):
             user_dir = self.config.path / "skills"
-            if user_dir.exists():
-                skill_dirs.append(user_dir)
+            if user_dir.exists(): skill_dirs.append(user_dir)
         
         # Project-level skills (configurable, default: disabled)
         if loading_config.get("project_skills", False):
             project_dir = Path.cwd() / ".lc" / "skills"
-            if project_dir.exists():
-                skill_dirs.append(project_dir)
+            if project_dir.exists(): skill_dirs.append(project_dir)
         
         # Custom directories from config (always enabled if specified)
         for custom_dir in self.config.skills.get("directories", []):
             path = Path(custom_dir).expanduser()
-            if path.exists():
-                skill_dirs.append(path)
+            if path.exists(): skill_dirs.append(path)
         
         # Apply config-level pinned overrides
         pinned_list = self.config.skills.get("pinned", [])
@@ -261,8 +235,7 @@ class Session:
             try:
                 resolver = resolver_class()
                 result = resolver.resolve(resolver_ctx)
-                if result: 
-                    resolved_context.update(result)
+                if result: resolved_context.update(result)
             
             except Exception as e:
                 print(f"An error occurred while resolving variables from {resolver_class}. This resolver was skipped.")
@@ -270,10 +243,9 @@ class Session:
         
         # Build system prompt
         sysprompt_key = self.config.model["sysprompt"].replace(".jinja", "")
-        if not sysprompt_key in resolved_context["templates"]: 
-            raise KeyError("System prompt template \"{sysprompt}.jinja\" not resolvable")
+        if not sysprompt_key in resolved_context["templates"]: raise KeyError("System prompt template \"{sysprompt}.jinja\" not resolvable")
         else:
-            system_template = self.jinja.from_string(resolved_context["templates"][sysprompt_key])
+            system_template    = self.jinja.from_string(resolved_context["templates"][sysprompt_key])
             self.system_prompt = system_template.render(**resolved_context)
     
     def _rebuild_for_resume(self, rebuild_system_prompt: bool = False) -> None:
@@ -286,15 +258,12 @@ class Session:
         if rebuild_system_prompt:
             self._load_skill_registry()
             self._build_system_prompt()
-            # Replace the system message with the new prompt
-            if self.conversation and self.conversation[0].get("role") == "system":
-                self.conversation[0]["content"] = self.system_prompt
-            else:
-                self.conversation.insert(0, {"role": "system", "content": self.system_prompt})
+
+            if self.conversation and self.conversation[0].get("role") == "system": self.conversation[0]["content"] = self.system_prompt
+            else: self.conversation.insert(0, {"role": "system", "content": self.system_prompt})
     
     def save(self) -> None:
-        if not self.config.session.get("persistence", True): 
-            return
+        if not self.config.session.get("persistence", True): return
         
         sessions_dir = self.config.path / "sessions"
         sessions_dir.mkdir(parents=True, exist_ok=True)
@@ -304,8 +273,7 @@ class Session:
         
         data = self._to_dict()
         packed = umsgpack.packb(data)
-        with open(temp_file, "wb") as f:
-            f.write(packed)
+        with open(temp_file, "wb") as f: f.write(packed)
         temp_file.rename(session_file)
     
     def _to_dict(self) -> Dict[str, Any]:
@@ -329,12 +297,7 @@ class Session:
         }
     
     @classmethod
-    def _from_dict(
-        cls, 
-        config: Config, 
-        data: Dict[str, Any],
-        rebuild_system_prompt: bool = False
-    ) -> "Session":
+    def _from_dict(cls,  config: Config,  data: Dict[str, Any], rebuild_system_prompt: bool = False) -> "Session":
         session = cls(config, data.get("session_id"), data.get("name"))
         session.created_at = data.get("created_at", time.time())
         session.updated_at = data.get("updated_at", time.time())
@@ -390,24 +353,20 @@ class Session:
             tool_calls = msg.get("tool_calls", [])
             
             if role == "user":
-                # Truncate long user messages
                 preview = content[:100] + "..." if len(content) > 100 else content
                 print(f"\n  [You]: {preview}")
             
             elif role == "assistant":
                 if tool_calls:
-                    # Show tool calls
                     for tc in tool_calls:
                         fn = tc.get("function", {})
                         name = fn.get("name", "unknown")
                         print(f"\n  [Tool]: {name}")
                 elif content:
-                    # Show brief response preview
                     preview = content[:100].replace('\n', ' ') + "..." if len(content) > 100 else content
                     print(f"\n  [lc]: {preview}")
             
             elif role == "tool":
-                # Tool results - brief indication
                 result_preview = content[:80].replace('\n', ' ') + "..." if len(content) > 80 else content
                 print(f"  → {result_preview}")
         
@@ -421,10 +380,8 @@ class Session:
         toolkit_config = self.config.toolkits
         builtin_names = toolkit_config.get("builtin", ["filesystem", "shell"])
         
-        if "filesystem" in builtin_names: 
-            toolkits["FileSystemTools"] = FileSystemTools()
-        if "shell" in builtin_names:      
-            toolkits["ShellTools"] = ShellTools()
+        if "filesystem" in builtin_names: toolkits["FileSystemTools"] = FileSystemTools()
+        if "shell" in builtin_names:      toolkits["ShellTools"] = ShellTools()
         
         # Load standalone tools from configured directories
         tool_dirs = self._get_tool_directories()
@@ -435,7 +392,6 @@ class Session:
         return toolkits
     
     def _get_tool_directories(self) -> List[Path]:
-        """Get list of tool directories based on loading configuration."""
         from pathlib import Path
         
         tool_dirs = []
@@ -444,14 +400,12 @@ class Session:
         # User tools in config directory (configurable, default: disabled)
         if loading_config.get("user_tools", False):
             user_dir = self.config.path / "tools"
-            if user_dir.exists():
-                tool_dirs.append(user_dir)
+            if user_dir.exists(): tool_dirs.append(user_dir)
         
         # Project-level tools (configurable, default: disabled)
         if loading_config.get("project_tools", False):
             project_dir = Path.cwd() / ".lc" / "tools"
-            if project_dir.exists():
-                tool_dirs.append(project_dir)
+            if project_dir.exists(): tool_dirs.append(project_dir)
         
         return tool_dirs
     
@@ -459,19 +413,14 @@ class Session:
         model_config = self.config.model
         backend_type = model_config.get("backend", "openai")
         
-        if force_mock or backend_type == "mock":
-            from lc.models.mock import MockBackend
-            return MockBackend(model_config)
-        elif backend_type == "openai": 
-            return OpenAIBackend(model_config)
-        else:                          
-            raise ValueError(f"Unknown backend type: {backend_type}")
+        if force_mock or backend_type == "mock": return MockBackend(model_config)
+        elif backend_type == "openai":           return OpenAIBackend(model_config)
+        else:                                    raise  ValueError(f"Unknown backend type: {backend_type}")
     
     # Executes a single command
     def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, stdin_context: Optional[str] = None) -> ExecutionResult:
         # If stdin context provided, add it as first user message
-        if stdin_context:
-            self.conversation.append({"role": "user", "content": f"[Received via stdin]:\n{stdin_context}"})
+        if stdin_context: self.conversation.append({"role": "user", "content": f"[Received via stdin]:\n{stdin_context}"})
         
         # Add the actual command
         self.conversation.append({"role": "user", "content": command})
@@ -490,38 +439,30 @@ class Session:
             
             return ExecutionResult(success=True, output=output)
             
-        except Exception as e: 
-            return ExecutionResult(success=False, error=str(e))
+        except Exception as e: return ExecutionResult(success=False, error=str(e))
     
     def run_interactive(self, gate_level: Optional[int] = None, can_prompt: bool = True) -> int:
         import sys
         
         # Display resume context if this is a resumed session
-        if self._is_resumed:
-            self._display_resume_context()
+        if self._is_resumed: self._display_resume_context()
         
         print(f"lc {self.get_version()} - Interactive Mode")
-        if self.session_name:
-            print(f"Session: {self.session_name} ({self.session_id[:8]}...)")
-        else:
-            print(f"Session: {self.session_id}")
+        if self.session_name: print(f"Session: {self.session_name} ({self.session_id[:8]}...)")
+        else:                 print(f"Session: {self.session_id}")
+        
         print("Type 'exit' or press Ctrl+C to quit.\n")
         
         while True:
             try:
                 user_input = input("lc> ").strip()
-                if not user_input: 
-                    continue
-                if user_input.lower() in ("exit", "quit"): 
-                    break
+                if not user_input: continue
+                if user_input.lower() in ("exit", "quit"): break
                 
                 result = self.execute(user_input, gate_level=gate_level, can_prompt=can_prompt)
-                if result.error: 
-                    print(f"Error: {result.error}", file=sys.stderr)
+                if result.error: print(f"Error: {result.error}", file=sys.stderr)
                 
-            except KeyboardInterrupt: 
-                print("\nUse 'exit' to quit.")
-            except EOFError: 
-                break
+            except KeyboardInterrupt: print("\nUse 'exit' to quit.")
+            except EOFError: break
         
         return 0
