@@ -204,7 +204,7 @@ class Agent:
         
         # Dispatch & Render
         result = toolkit.dispatch(tool_name=method_name, arguments=arguments, gate_level=self.gate_level)
-        self.renderer.display_tool_result(result)
+        self.renderer.display_tool_result(result, modality)
         
         return result, modality
     

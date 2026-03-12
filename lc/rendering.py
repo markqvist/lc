@@ -92,8 +92,19 @@ class TTYRenderer:
 
         self.write("")
     
-    def display_tool_result(self, result: str) -> None:
+    def display_tool_result(self, result: str, modality: str = "text") -> None:
         if not self._is_tty(): return
+        
+        # Handle non-text modalities with placeholder
+        if modality != "text":
+            # Check if result indicates an error
+            if result.startswith("Error:") or result.startswith("[Invalid") or result.startswith("[Could not"):
+                self.write(f"\n{self.RED}✗ Result:{self.RESET}\n{result}\n")
+            else:
+                self.write(f"\n{self.GREEN}✓ Result:{self.RESET}\n({modality} data)\n")
+            return
+        
+        # Normal text display with truncation
         display = result
         if len(display) > 200: display = display[:197] + "..."
         lines = display.split('\n')
