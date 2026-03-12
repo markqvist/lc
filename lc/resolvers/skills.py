@@ -86,8 +86,8 @@ class SkillsResolver(Resolver):
             lines.append("")
         
         if unpinned:
-            lines.append("## Loadable Skills (Load with skills.load_skill)")
-            lines.append("**Important**: To call tools from loadable skills, you must load the relevant skill first, and read any relevant documentation relating to their use.")
+            lines.append("## Loadable Skills")
+            lines.append("**Important!** Tools that belong to loadable skills cannot be called before their associated skill has been loaded with the `skills.load_skill`.")
             lines.append("")
             for skill in unpinned:
                 desc = skill.get("description", "").strip()
