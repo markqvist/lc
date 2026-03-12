@@ -258,7 +258,9 @@ class GitResolver(Resolver):
 
 ## Skills
 
-Skills bundle domain knowledge. Drop them in `~/.lc/skills/`:
+Skills for `lc` are different. They can contain anything needed to do anything. Documentation, domain knowledge, tools, code, a pre-compiled Commodore 64 emulator to pretend you're still young. Needless to say, this is frightening. You be the judge on how to handle this.
+
+Create the skills you need, and drop them in `~/.lc/skills/`:
 
 ```
 skills/
