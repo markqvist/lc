@@ -223,7 +223,7 @@ When both a command argument and stdin are provided, stdin is inserted as a sepa
 You can also pipe or redirect output *from* `lc`:
 
 ```bash
-$ cat contacts.csv | lc "Create an alphabetically sorted, markdown-formatted contacts sheet" > Contacts.md
+$ cat contacts.csv | lc "Create a sorted, markdown-formatted contact sheet" > Contacts.md
 ```
 
 **Configuration** (in `~/.lc/config`):
