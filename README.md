@@ -40,9 +40,10 @@ If you want a bit more context, read [The Guide](./GUIDE.md)
 Humanity's Last Command is different:
 
 - **Truly local**: Runs on your machine, with your models, on your data.
-- **Auditable**: Small codebase, readable code, no 600k-line dependency nightmares.
+- **Auditable**: Spartan codebase, readable code, no 600k-line dependency nightmares.
+- **Universal**: Does anything, including what other frameworks won't. No restrictions, no training wheels.
 - **Explicit**: You see what it's doing. No hidden API calls, no data exfiltration.
-- **Extensible**: Teach it new tricks with simple Python.
+- **Extensible**: Teach it new tricks with simple Python or compiled binaries.
 - **Actually Works**: Novel concept, I know.
 
 ## Danger Zone
