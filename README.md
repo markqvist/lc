@@ -201,7 +201,7 @@ $ lc -r --rebuild
 
 Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not mine.
 
-### Pipe/Stdin Support
+### Pipe/stdin/stdout Support
 
 `lc` can receive input via pipes:
 
@@ -219,6 +219,12 @@ $ cat data.csv | lc "Find anomalies in this data"
 When both a command argument and stdin are provided, stdin is inserted as a separate user message before your command. The model sees:
 1. "[Received via stdin]: (piped content)"
 2. "(your command argument)"
+
+You can also pipe or redirect output *from* `lc`:
+
+```bash
+$ cat contacts.csv | lc "Create an alphabetically sorted, markdown-formatted contacts sheet" > Contacts.md
+```
 
 **Configuration** (in `~/.lc/config`):
 ```ini
