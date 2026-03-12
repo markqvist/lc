@@ -174,20 +174,29 @@ Allow? [y/N]
 # List all sessions
 $ lc --list-sessions
 
-# Resume previous session
-$ lc -i --resume
+# Resume the previous session
+$ lc --resume
 
 # Resume specific session by ID
-$ lc -i --resume --session-id <uuid>
+$ lc -rI <uuid>
 
 # Resume by name (if you named the session)
-$ lc -i --resume --session-id "docs-refactor"
+$ lc -rI "docs-refactor"
 
-# Create a named session
+# Start a named, interactive session
 $ lc -i --name "docs-refactor"
 
+# Start a named session, execute run immediately
+$ lc -n "docs-refactor" "Restructure all the documentation"
+
+# Resume the named session with another command
+$ lc -rI "docs-refactor" "Why did you translate everything to Coptic?"
+
+# Drop into interactive mode for existing session
+$ lc -rI "docs-refactor"
+
 # Rebuild system prompt on resume (loads new skills, invalidates KV-cache)
-$ lc -i --resume --rebuild
+$ lc -r --rebuild
 ```
 
 Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not mine.
@@ -198,8 +207,7 @@ Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not 
 
 **Case 1: Piped content IS the prompt**
 ```bash
-$ echo "Summarize this log file" | lc
-$ cat error.log | lc --resume
+$ (echo "Summarize this log file"; cat ./logfile.txt) | lc
 ```
 
 **Case 2: Piped content is context for your command**
@@ -229,7 +237,7 @@ Tools are just Python. Create a `Toolkit`:
 from lc.toolkit import Toolkit, tool
 
 class MyTools(Toolkit):
-    @tool
+    @tool(gate_level=0)
     def hello(self, name: str) -> str:
         """Say hello to someone."""
         return f"Hello, {name}! Working in: {self.context.session.working_dir}"

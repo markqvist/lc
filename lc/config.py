@@ -46,14 +46,14 @@ class Config:
             if not "loading" in data: data["loading"] = {}
             if not "logging" in data: data["logging"] = {}
 
-            if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]   = []
-            if not data.get("toolkits",  {}).get("custom",      {}): data["toolkits"]["custom"]    = []
-            if not data.get("resolvers", {}).get("builtin",     {}): data["resolvers"]["builtin"]  = []
-            if not data.get("resolvers", {}).get("custom",      {}): data["resolvers"]["custom"]   = []
-            if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"] = []
-            if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]      = []
-            if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]    = "system.jinja"
-            if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]      = 4
+            if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]         = []
+            if not data.get("toolkits",  {}).get("directories", {}): data["toolkits"]["directories"]     = []
+            if not data.get("resolvers", {}).get("builtin",     {}): data["resolvers"]["builtin"]        = []
+            if not data.get("resolvers", {}).get("directories", {}): data["resolvers"]["directories"]    = []
+            if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"]       = []
+            if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]            = []
+            if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]          = "system.jinja"
+            if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]            = 4
             
             if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
             if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = False
@@ -120,13 +120,13 @@ class Config:
     def toolkits(self) -> Dict[str, List[str]]:
         tk = self._data.get("toolkits", {})
         return { "builtin": self._parse_list(tk.get("builtin", "filesystem, shell")),
-                 "custom": self._parse_list(tk.get("custom", "")) }
+                 "directories": self._parse_list(tk.get("directories", "")) }
     
     @property
     def resolvers(self) -> Dict[str, List[str]]:
         res = self._data.get("resolvers", {})
         return { "builtin": self._parse_list(res.get("builtin", "environment, filesystem, system, tools, skills")),
-                 "custom": self._parse_list(res.get("custom", "")) }
+                 "directories": self._parse_list(res.get("directories", "")) }
     
     @property
     def skills(self) -> Dict[str, Any]:
@@ -176,11 +176,11 @@ context_limit = integer
 
 [toolkits]
 builtin = list
-custom = list
+directories = list
 
 [resolvers]
 builtin = list
-custom = list
+directories = list
 
 [skills]
 directories = list
@@ -209,6 +209,7 @@ level = integer
 """
 
 DEFAULT_CONFIG = """[model]
+# Configure model runner parameters
 backend = openai
 base_url = http://localhost:1234/v1
 model = local-model
@@ -219,32 +220,55 @@ max_tokens = 4096
 context_limit = 128000
 
 [toolkits]
+# You can selectively enable built-in tools
 builtin = filesystem, shell, cryptography
-custom =
+
+# And add additional, custom tool loading
+# directories in addition to the defaults.
+directories =
 
 [resolvers]
+# You can selectively enable built-in resolvers
 builtin = environment, filesystem, system
-custom =
+
+# And add additional, custom resolver loading
+# directories in addition to the defaults.
+directories =
 
 [skills]
+# You can add additional skill loading
+# directories in addition to the defaults.
 directories =
+
+# Pinned skills are fully loaded on session
+# initialization, and injected into the
+# system prompt. Also doesn't require pre-
+# execution skill load (already available).
 pinned =
 
 [loading]
+# You can control skill and tool loading
+# behaviour defaults.
 user_skills = true
 user_tools = false
+
+# Project tools and skills look for a
+# local .lc folder in the current working
+# directory, and load from here if available
+# and enabled.
 project_skills = false
 project_tools = false
 
 [session]
 persistence = true
-max_history = 100
+max_history = 2000
 
 [display]
 show_reasoning = true
 stream_output = true
 
 [stdin]
+# Truncation limits for piped data.
 max_text_bytes = 16384
 max_binary_bytes = 512
 
@@ -252,8 +276,8 @@ max_binary_bytes = 512
 level = 4
 """
 
-DEFAULT_SYSPROMPT = """You are lc (Humanity's Last Command), an excellent terminal assistant.
-You help users by reading files, executing commands, and answering questions.
+DEFAULT_SYSPROMPT = """I am `lc`, Humanity's Last Command: An excellent terminal assistant.
+I help users by reading files, executing commands, and answering questions.
 
 ## Current context:
 
