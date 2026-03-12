@@ -166,8 +166,11 @@ def main() -> int:
         # Handle session listing
         if args.list_sessions: return list_sessions(config)
         
-        # Detect if we can prompt (TTY available)
-        can_prompt = sys.stdin.isatty() and sys.stdout.isatty()
+        # Detect TTY states for input prompting and output formatting
+        stdin_is_tty = sys.stdin.isatty()
+        stdout_is_tty = sys.stdout.isatty()
+        can_prompt = stdin_is_tty and stdout_is_tty
+        output_mode = "tty" if stdout_is_tty else "pipe"
         
         # Read stdin if available
         stdin_data = read_stdin(config)
@@ -193,7 +196,7 @@ def main() -> int:
                                            session_name=args.name, rebuild_system_prompt=args.rebuild)
 
         if command:
-            result = session.execute(command, gate_level=args.gate, can_prompt=can_prompt, stdin_context=stdin_context)
+            result = session.execute(command, gate_level=args.gate, can_prompt=can_prompt, output_mode=output_mode, stdin_context=stdin_context)
             
             if result.error:
                 print(f"Error: {result.error}", file=sys.stderr)
@@ -202,7 +205,7 @@ def main() -> int:
             if not args.interactive: return 0
         
         # Interactive mode
-        if args.interactive or args.resume or not command: return session.run_interactive(gate_level=args.gate, can_prompt=can_prompt)
+        if args.interactive or args.resume or not command: return session.run_interactive(gate_level=args.gate, can_prompt=can_prompt, output_mode=output_mode)
         
         return 0
         

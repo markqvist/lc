@@ -22,13 +22,15 @@ class Agent:
                           2: "command execution (read-only)",
                           3: "destructive/destructive execution" }
     
-    def __init__(self, session: "Session", model_backend, toolkits: Dict[str, Any], gate_level: Optional[int] = None, can_prompt: bool = False):
-        self.session    = session
-        self.model      = model_backend
-        self.toolkits   = toolkits
-        self.gate_level = gate_level
-        self.can_prompt = can_prompt
-        self.renderer   = TTYRenderer(show_reasoning=session.config.display.get("show_reasoning", True))
+    def __init__(self, session: "Session", model_backend, toolkits: Dict[str, Any], gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty"):
+        self.session     = session
+        self.model       = model_backend
+        self.toolkits    = toolkits
+        self.gate_level  = gate_level
+        self.can_prompt  = can_prompt
+        self.output_mode = output_mode
+        show_reasoning   = session.config.display.get("show_reasoning", True) and output_mode == "tty"
+        self.renderer    = TTYRenderer(show_reasoning=show_reasoning, mode=output_mode)
     
     def run_turn(self, user_input: str) -> str:
         # Note: User message already added by session.execute()

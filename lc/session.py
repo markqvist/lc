@@ -430,35 +430,35 @@ class Session:
         else:                                    raise  ValueError(f"Unknown backend type: {backend_type}")
     
     # Executes a single command
-    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, stdin_context: Optional[str] = None) -> ExecutionResult:
+    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty", stdin_context: Optional[str] = None) -> ExecutionResult:
         # If stdin context provided, add it as first user message
         if stdin_context: self.conversation.append({"role": "user", "content": f"[Received via stdin]:\n{stdin_context}"})
-        
+
         # Add the actual command
         self.conversation.append({"role": "user", "content": command})
-        
+
         try:
             # Setup
             model_backend = self._create_model_backend()
             toolkits = self._load_toolkits()
-            
+
             # Create agent and run turn
-            agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt)
+            agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt, output_mode=output_mode)
             output = agent.run_turn(command)
-            
+
             self.turn_count += 1
             self.save()
-            
+
             return ExecutionResult(success=True, output=output)
-            
+
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
-    def run_interactive(self, gate_level: Optional[int] = None, can_prompt: bool = True) -> int:
+    def run_interactive(self, gate_level: Optional[int] = None, can_prompt: bool = True, output_mode: str = "tty") -> int:
         import sys
-        
+
         # Display resume context if this is a resumed session
         if self._is_resumed: self._display_resume_context()
-        
+
         print(f"lc {self.get_version()} - Interactive Mode")
         if self.session_name: print(f"Session: {self.session_name} ({self.session_id[:8]}...)")
         else:                 print(f"Session: {self.session_id}")

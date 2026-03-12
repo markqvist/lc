@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
 import sys
+import re
 import random
 from typing import Optional
 
@@ -12,7 +13,7 @@ class TTYRenderer:
     DIM = "\033[2m"
     ITALIC = "\033[3m"
     UNDERLINE = "\033[4m"
-    
+
     RED = "\033[31m"
     GREEN = "\033[32m"
     YELLOW = "\033[33m"
@@ -22,18 +23,22 @@ class TTYRenderer:
 
     CLEAR_LINE = "\x1b[2K"
     MOVE_UP = "\033[A"
-    
+
     THINKING_ICON = "⧖"
     DONE_THINKING_ICON = "⧗"
     SYSTEM_ICON = "⚙"
-    
-    def __init__(self, stream=None, show_reasoning: bool = True):
+
+    def __init__(self, stream=None, show_reasoning: bool = True, mode: str = "tty"):
         self.stream = stream or sys.stdout
-        self.show_reasoning = show_reasoning
+        self.mode = mode
+        self.show_reasoning = show_reasoning and (mode == "tty")
         self._buffer = ""
         self._in_reasoning = False
         self._reasoning_content = ""
         self._spinner_shown = False
+
+    def _is_tty(self) -> bool:
+        return self.mode == "tty"
     
     def write(self, text: str, end: str = "") -> None:
         self.stream.write(text + end)
@@ -77,16 +82,18 @@ class TTYRenderer:
             self.write(chunk, end="")
     
     def display_tool_call(self, tool_name: str, arguments: dict) -> None:
+        if not self._is_tty(): return
         self.write(f"\n{self.CYAN}▶ {tool_name}{self.RESET}")
         if arguments:
             for key, value in arguments.items():
                 display_value = str(value)
                 if len(display_value) > 50: display_value = display_value[:47] + "..."
                 self.write(f"\n  {self.DIM}{key}:{self.RESET} {display_value}", end="")
-        
+
         self.write("")
     
     def display_tool_result(self, result: str) -> None:
+        if not self._is_tty(): return
         display = result
         if len(display) > 200: display = display[:197] + "..."
         lines = display.split('\n')
@@ -94,22 +101,37 @@ class TTYRenderer:
         self.write(f"\n{self.GREEN}✓ Result:{self.RESET}\n{display}\n")
     
     def display_error(self, message: str) -> None:
+        if not self._is_tty(): return
         self.write(f"\n{self.RED}✗ Error: {message}{self.RESET}\n")
-    
+
     def display_thinking(self) -> None:
+        if not self._is_tty(): return
         spinner = random.choice(SPINNER_FRAMES)
         self._spinner_shown = True
         if self.show_reasoning: self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner}", end="")
         else:                   self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner}", end="")
-    
+
     def clear_thinking(self) -> None:
+        if not self._is_tty():
+            self._spinner_shown = False
+            return
         if self._spinner_shown:
             self.write(self.CLEAR_LINE, end="\r")
             self._spinner_shown = False
-    
+
+    ANSI_PATTERN = re.compile(r'\x1b\[[0-9;]*m')
+    def _stdout_sanitize(self, text: str) -> str:
+        strip_ansi = False
+        if strip_ansi: return self.ANSI_PATTERN.sub('', text)
+        else:          return text
+
     def display_response(self, content: str, reasoning_content: Optional[str] = None) -> None:
-        if reasoning_content and self.show_reasoning: self.display_reasoning_content(reasoning_content)
-        if content: self.write(f"\n{content}", end="\n")
+        if self._is_tty():
+            if reasoning_content and self.show_reasoning: self.display_reasoning_content(reasoning_content)
+            if content: self.write(f"\n{content}", end="\n")
+        else:
+            # Pipe mode: Final, raw output only
+            if content: self.write(self._stdout_sanitize(content).rstrip(), end="\n")
     
     def format_markdown(self, text: str) -> str:
         # MVP: return as-is
