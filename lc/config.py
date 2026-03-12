@@ -50,6 +50,12 @@ class Config:
             if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]    = False
             if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"]= False
             if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"] = False
+
+            # Ensure stdin section exists with defaults
+            if "stdin" not in data:
+                data["stdin"] = {}
+            if not data["stdin"].get("max_text_bytes", {}): data["stdin"]["max_text_bytes"] = 16384
+            if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
             
             if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]    = "system.jinja"
 
@@ -127,6 +133,14 @@ class Config:
             "project_skills": ld.get("project_skills", False), # Default: disabled (security)
             "project_tools": ld.get("project_tools", False),   # Default: disabled (security)
         }
+
+    @property
+    def stdin(self) -> Dict[str, int]:
+        si = self._data.get("stdin", {})
+        return {
+            "max_text_bytes": si.get("max_text_bytes", 16384),    # 16KB default for text
+            "max_binary_bytes": si.get("max_binary_bytes", 512),  # 512 bytes default for binary
+        }
     
     def _parse_list(self, value: Any) -> List[str]:
         if not value: return []
@@ -179,6 +193,10 @@ max_history = integer
 [display]
 show_reasoning = boolean
 stream_output = boolean
+
+[stdin]
+max_text_bytes = integer
+max_binary_bytes = integer
 """
 
 DEFAULT_CONFIG = """[model]
@@ -216,6 +234,10 @@ max_history = 100
 [display]
 show_reasoning = true
 stream_output = true
+
+[stdin]
+max_text_bytes = 16384
+max_binary_bytes = 512
 """
 
 DEFAULT_SYSPROMPT = """You are lc (Humanity's Last Command), an excellent terminal assistant.

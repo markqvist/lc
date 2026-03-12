@@ -195,6 +195,35 @@ $ lc -i --resume --rebuild
 
 Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not mine.
 
+### Pipe/Stdin Support
+
+`lc` can receive input via pipes:
+
+**Case 1: Piped content IS the prompt**
+```bash
+$ echo "Summarize this log file" | lc
+$ cat error.log | lc
+```
+
+**Case 2: Piped content is context for your command**
+```bash
+$ date | lc "If it's night-time and lights are on, turn them off"
+$ cat data.csv | lc "Find anomalies in this data"
+```
+
+When both a command argument and stdin are provided, stdin is inserted as a separate user message before your command. The model sees:
+1. "[Received via stdin]: <piped content>"
+2. "<your command argument>"
+
+**Configuration** (in `~/.lc/config`):
+```ini
+[stdin]
+max_text_bytes = 16384     # Truncate text after this limit
+max_binary_bytes = 512     # Hex dump limit for binary data
+```
+
+Binary data is automatically detected and formatted as a hex dump with a warning to the model that the data may be unintentional.
+
 ## Writing Tools
 
 Tools are just Python. Create a `Toolkit`:

@@ -78,6 +78,92 @@ def list_sessions(config: Config) -> int:
     
     return 0
 
+
+def read_stdin(config: Config) -> Optional[tuple[str, bool]]:
+    """
+    Read stdin if available and determine if content is binary.
+    
+    Returns:
+        Tuple of (content, is_binary) or None if no stdin data
+    """
+    import select
+    
+    # Check if stdin has data without blocking
+    if not select.select([sys.stdin], [], [], 0)[0]:
+        return None
+    
+    # Read all available data
+    data = sys.stdin.buffer.read()
+    
+    if not data:
+        return None
+    
+    # Try to detect if binary
+    is_binary = False
+    
+    # Check for null bytes - strong indicator of binary
+    if b'\x00' in data:
+        is_binary = True
+    else:
+        # Try UTF-8 decode
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError:
+            # Not valid UTF-8, treat as binary
+            is_binary = True
+            text = None
+        
+        if not is_binary:
+            # Count non-printable characters
+            non_printable = sum(1 for c in text if ord(c) < 32 and c not in '\n\r\t')
+            if len(text) > 0 and non_printable / len(text) > 0.1:  # >10% control chars
+                is_binary = True
+    
+    stdin_config = config.stdin
+    
+    if is_binary:
+        # For binary, include hex representation
+        max_bytes = stdin_config.get("max_binary_bytes", 512)
+        truncated = len(data) > max_bytes
+        display_data = data[:max_bytes]
+        
+        # Format as hex dump
+        hex_lines = []
+        for i in range(0, len(display_data), 16):
+            chunk = display_data[i:i+16]
+            hex_part = ' '.join(f'{b:02x}' for b in chunk)
+            ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
+            hex_lines.append(f"  {i:04x}: {hex_part:<48} {ascii_part}")
+        
+        result = f"[Binary data received ({len(data)} bytes total){', truncated' if truncated else ''}]\n"
+        result += "[Note: This appears to be binary data which may have been unintentionally piped.\n"
+        result += "If you intended to pipe text, check the source program's output encoding.]\n\n"
+        result += "Hex dump of first " + str(len(display_data)) + " bytes:\n"
+        result += '\n'.join(hex_lines)
+        
+        if truncated:
+            result += f"\n\n... [{len(data) - max_bytes} more bytes]"
+        
+        return (result, True)
+    else:
+        # Text data
+        text = data.decode('utf-8')
+        max_bytes = stdin_config.get("max_text_bytes", 16384)
+        
+        # Handle truncation
+        if len(data) > max_bytes:
+            # Find a safe truncation point (don't cut in middle of multi-byte char)
+            truncated_text = text[:max_bytes]
+            # Try to end on a line boundary if possible
+            last_newline = truncated_text.rfind('\n')
+            if last_newline > max_bytes * 0.8:  # Only if we don't lose too much
+                truncated_text = truncated_text[:last_newline]
+            
+            remaining = len(data) - len(truncated_text.encode('utf-8'))
+            text = truncated_text + f"\n\n[... {remaining} more bytes truncated]"
+        
+        return (text, False)
+
 def main() -> int:
     parser = create_argument_parser()
     args = parser.parse_args()
@@ -91,12 +177,29 @@ def main() -> int:
         if args.list_sessions:
             return list_sessions(config)
         
-        if not args.command and not args.interactive and not args.resume:
-            parser.print_help()
-            return 1
-        
         # Detect if we can prompt (TTY available)
         can_prompt = sys.stdin.isatty() and sys.stdout.isatty()
+        
+        # Read stdin if available
+        stdin_data = read_stdin(config)
+        
+        # Determine command and stdin context
+        command = args.command
+        stdin_context = None
+        
+        if stdin_data:
+            stdin_content, is_binary = stdin_data
+            
+            if not command:
+                # Case 1: stdin IS the command
+                command = stdin_content
+            else:
+                # Case 2: stdin is additional context
+                stdin_context = stdin_content
+        
+        if not command and not args.interactive and not args.resume:
+            parser.print_help()
+            return 1
         
         session = Session.create_or_resume(
             config=config, 
@@ -106,8 +209,8 @@ def main() -> int:
             rebuild_system_prompt=args.rebuild
         )
 
-        if args.command:
-            result = session.execute(args.command, gate_level=args.gate, can_prompt=can_prompt)
+        if command:
+            result = session.execute(command, gate_level=args.gate, can_prompt=can_prompt, stdin_context=stdin_context)
             
             if result.error:
                 print(f"Error: {result.error}", file=sys.stderr)
@@ -116,7 +219,7 @@ def main() -> int:
             if not args.interactive: return 0
         
         # Interactive mode
-        if args.interactive or args.resume or not args.command:
+        if args.interactive or args.resume or not command:
             return session.run_interactive(gate_level=args.gate, can_prompt=can_prompt)
         
         return 0

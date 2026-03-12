@@ -468,7 +468,12 @@ class Session:
             raise ValueError(f"Unknown backend type: {backend_type}")
     
     # Executes a single command
-    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False) -> ExecutionResult:
+    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, stdin_context: Optional[str] = None) -> ExecutionResult:
+        # If stdin context provided, add it as first user message
+        if stdin_context:
+            self.conversation.append({"role": "user", "content": f"[Received via stdin]:\n{stdin_context}"})
+        
+        # Add the actual command
         self.conversation.append({"role": "user", "content": command})
         
         try:
