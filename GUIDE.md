@@ -2,7 +2,7 @@
 
 > *"The computer should do the work. That's literally what we built them for."*
 
-## The Tyranny of the Manual
+## Tyranny of the Manual
 
 Consider the arc of human-computer interaction. We began with punch cards — physical manifestations of intent that machines could execute without complaint. Progressed through command lines, where we learned to speak their language with increasing fluency. Arrived at graphical interfaces, where we point and click our way through workflows designed by someone else, for purposes they imagined, constrained by their imagination.
 
@@ -53,13 +53,13 @@ This is the core transaction. You trade implementation control for time and cogn
 
 Tools and skills extend `lc`'s capabilities, but more importantly, they extend *yours*. A well-crafted tool captures domain knowledge — not just *what* to do, but *how to think about* a class of problems.
 
-Consider a `DatabaseTools` skill. It might provide tools for querying, backing up, and modifying databases. But the SKILL.md — the documentation the model reads when you call `skills.load_skill` — captures procedures: always backup first, test queries on copies, wrap modifications in transactions. The skill doesn't just add capabilities; it adds *caution*, *process*, *wisdom* earned from previous disasters.
+Consider a `DatabaseTools` skill. It might provide tools for querying, backing up, and modifying databases. But the SKILL.md — the documentation the model reads when you call `skills.load_skill` — captures procedures: always backup first, test queries on copies, wrap modifications in transactions. The skill doesn't just add capabilities; it adds *caution*, *process* and *wisdom* earned from previous disasters.
 
 This is where `lc` diverges from simple "AI shell" projects. It's not just about executing commands — it's about capturing and transmitting expertise. Your hard-learned best practices, encoded once, consulted always. Your operational heuristics accumulated over a life-time, available to the rest of your family via a tool-call.
 
 Creating good tools and skills is an act of pedagogy. You're teaching the machine to teach others. Do it well, and the investment compounds.
 
-## The Cron Job That Writes Itself
+## Cron Jobs That Writes Themselves
 
 Here's where we venture into territory that seems, at first glance, slightly unhinged. But follow the logic.
 
@@ -95,7 +95,7 @@ The boundary between "interactive assistant" and "programmable automation" disso
 
 This is the deeper insight: by making natural language a *direct interface to computation*, we've created something that integrates everywhere text flows. Which is, it turns out, **everywhere**.
 
-## The Persistent Agent in Ten Minutes
+## A Persistent Agent in Two Minutes
 
 Want something stranger? Build a persistent agent.
 
@@ -160,7 +160,7 @@ Use `--gate` when experimenting in unfamiliar territory. Review planned actions 
 
 But also: don't let fear of breakage prevent exploration. The same capabilities that enable disaster enable *magic*. The line between them is thin and often only visible in retrospect. While madness and genius are very much distinct, there's a darned fine split between them.
 
-## A Meta-Pattern
+## Meta-Patterns
 
 There's a pattern here that extends beyond `lc`, worth recognizing.
 
