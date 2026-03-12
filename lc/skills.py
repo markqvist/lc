@@ -3,6 +3,7 @@
 """Skill management for lc."""
 
 import re
+import RNS
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 

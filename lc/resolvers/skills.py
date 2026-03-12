@@ -2,8 +2,9 @@
 
 """Skills resolver for lc."""
 
-from typing import Dict, Any, Optional, List
+import RNS
 
+from typing import Dict, Any, Optional, List
 from lc.resolver import Resolver, Context
 
 
@@ -27,6 +28,7 @@ class SkillsResolver(Resolver):
             skill_info = {
                 "name": skill.name,
                 "description": skill.description,
+                "content": skill.content,
                 "version": skill.version,
                 "pinned": skill.pinned,
                 "loaded": name in loaded,
@@ -35,13 +37,10 @@ class SkillsResolver(Resolver):
             
             all_skills.append(skill_info)
             
-            if skill.pinned:
-                pinned.append(skill_info)
-            else:
-                unpinned.append(skill_info)
+            if skill.pinned: pinned.append(skill_info)
+            else:            unpinned.append(skill_info)
             
-            if name in loaded:
-                loaded_skills.append(skill_info)
+            if name in loaded: loaded_skills.append(skill_info)
         
         # Sort each list alphabetically by name
         all_skills.sort(key=lambda s: s["name"])
@@ -70,19 +69,24 @@ class SkillsResolver(Resolver):
         lines = []
         
         if pinned:
-            lines.append("## Pinned Skills (Always Available)")
+            lines.append("## Pinned Skills")
             lines.append("")
             for skill in pinned:
-                desc = skill.get("description", "").strip()
-                short_desc = desc.split('\n')[0][:60] if desc else ""
-                if len(desc) > 60:
-                    short_desc += "..."
-                tool_info = f" ({skill['tool_count']} tools)" if skill['tool_count'] else ""
-                lines.append(f"• **{skill['name']}**{tool_info}: {short_desc}")
+                try:
+                    desc = skill.get("description", "").strip()
+                    tool_info = f" ({skill['tool_count']} tools)" if skill['tool_count'] else ""
+                    full_skill = skill.get("content", "").replace("\r\n", "\n")
+                    if full_skill.startswith("#"): full_skill = f"##{full_skill}"
+                    full_skill = full_skill.replace("\n#", "\n###")
+                    if not full_skill: lines.append(f"Could not load full skill information for **{skill['name']}**")
+                    else: lines.extend(full_skill.splitlines())
+                
+                except Exception as e: RNS.trace_exception(e)
+
             lines.append("")
         
         if unpinned:
-            lines.append("## Available Skills (Load with skills.load_skill)")
+            lines.append("## Loadable Skills (Load with skills.load_skill)")
             lines.append("")
             for skill in unpinned:
                 desc = skill.get("description", "").strip()
@@ -96,4 +100,6 @@ class SkillsResolver(Resolver):
         if not pinned and not unpinned:
             lines.append("*No skills installed*")
         
-        return "\n".join(lines)
+        summary = "\n".join(lines)
+        RNS.log(f"Skills summary\n{summary}", RNS.LOG_DEBUG)
+        return summary
