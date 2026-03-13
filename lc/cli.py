@@ -17,7 +17,6 @@ from lc.config import Config
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
-    """Create and configure argument parser."""
     parser = argparse.ArgumentParser(prog="lc", description="Humanity's Last Command - natural language command execution", epilog='Example: lc "Find all PDFs and organize them by date"')
     
     parser.add_argument("command", nargs="?", help="Natural language command to execute (omit for interactive mode if -i specified)")
@@ -54,9 +53,7 @@ def resolve_config_path(specified: Optional[str]) -> Path:
         return dot_lc
 
 def list_sessions(config: Config) -> int:
-    """List available sessions and exit."""
-    from lc.session import SessionManager
-    
+    from lc.session import SessionManager    
     sessions = SessionManager.list_sessions(config)
     
     if not sessions:
@@ -87,7 +84,6 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
     from RNS.vendor import umsgpack
     from pathlib import Path
     
-    # Try to resolve session_ref to a file path
     session_file = None
     
     # Case 1: Direct file path
@@ -333,7 +329,6 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
             add("```")
             add()
     
-    # Output the formatted markdown
     output = "\n".join(lines)
     print(output)
     
