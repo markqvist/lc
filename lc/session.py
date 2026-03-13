@@ -262,17 +262,18 @@ class Session:
     def _rebuild_for_resume(self, rebuild_system_prompt: bool = False) -> None:
         """
         Rebuild session state after loading from disk.
-        
-        By default, preserves the existing system prompt to maintain KV-cache validity.
-        Use rebuild_system_prompt=True to force regeneration (invalidates cache but loads new skills).
+        Optionally rebuilds the system prompt to maintain KV-cache validity.
         """
+        
+        self._load_skill_registry()
+        
+        # Optionally rebuild system prompt
         if rebuild_system_prompt:
-            self._load_skill_registry()
             self._build_system_prompt()
 
             if self.conversation and self.conversation[0].get("role") == "system": self.conversation[0]["content"] = self.system_prompt
             else: self.conversation.insert(0, {"role": "system", "content": self.system_prompt})
-    
+
     def save(self) -> None:
         if not self.config.session.get("persistence", True): return
         
