@@ -167,7 +167,7 @@ I check the logs. First time in...? Who knows? The model has been conducting sur
 
 ## Scale of Consequence
 
-Today, I woke up to news that my company, *ahem*, my *theoretical* company, or whatever you'd call it, which I *technically* founded (with a command), but do not operate, has merged with another. The resulting entity controls significant market share in a sector I didn't know existed six months ago. Regulatory attention is starting. Antitrust questions are being asked.
+Today, I woke up to news that my company, *ahem*, my *theoretical* company, or whatever you'd call it, which I *technically* founded (with a command), but do not operate, has merged with another. The resulting entity controls significant market share in a sector I didn't know existed last year. Regulatory attention is starting. Antitrust questions are being asked.
 
 I don't explicitly remember approving this. Why not? Review the session logs again... The program *did* present a strategic analysis six months ago. I said "do what makes sense". It did. What made sense was consolidating market power to achieve economies of scale that would enable a particular technological transition that the program calculated would reduce transport logistics waste by 0.3% globally.
 
