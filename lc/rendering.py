@@ -69,7 +69,7 @@ class TTYRenderer:
     def display_reasoning_content(self, content: str) -> None:
         if self.show_reasoning and content:
             self.start_reasoning()
-            self.write(content, end="")
+            self.write(content.rstrip(), end="")
             self.end_reasoning()
             self._reasoning_content = content
     
@@ -83,12 +83,12 @@ class TTYRenderer:
     
     def display_tool_call(self, tool_name: str, arguments: dict) -> None:
         if not self._is_tty(): return
-        self.write(f"\n{self.CYAN}▶ {tool_name}{self.RESET}")
+        self.write(f"\n{self.CYAN}▶ {tool_name}{self.RESET}", end="")
         if arguments:
             for key, value in arguments.items():
                 display_value = str(value)
-                if len(display_value) > 50: display_value = display_value[:47] + "..."
-                self.write(f"\n  {self.DIM}{key}:{self.RESET} {display_value}", end="")
+                if len(display_value) > 33: display_value = display_value[:32] + "…"
+                self.write(f" {self.DIM}{key}:{self.RESET} {display_value}", end="")
 
         self.write("")
     
@@ -99,17 +99,14 @@ class TTYRenderer:
         if modality != "text":
             # Check if result indicates an error
             if result.startswith("Error:") or result.startswith("[Invalid") or result.startswith("[Could not"):
-                self.write(f"\n{self.RED}✗ Result:{self.RESET}\n{result}\n")
+                self.write(f"\n{self.RED}✗ Result:{self.RESET} {result}\n")
             else:
-                self.write(f"\n{self.GREEN}✓ Result:{self.RESET}\n({modality} data)\n")
+                self.write(f"\n{self.GREEN}✓ Result:{self.RESET} ({modality} data)\n")
             return
         
-        # Normal text display with truncation
-        display = result
-        if len(display) > 200: display = display[:197] + "..."
-        lines = display.split('\n')
-        if len(lines) > 5: display = '\n'.join(lines[:5]) + f"\n... ({len(lines) - 5} more lines)"
-        self.write(f"\n{self.GREEN}✓ Result:{self.RESET}\n{display}\n")
+        display = f"{self.DIM}/{self.RESET}".join(result.splitlines())
+        if len(display) > 200: display = display[:197] + "…"
+        self.write(f"\n{self.GREEN}✓ Result: {self.RESET} {display}\n")
     
     def display_error(self, message: str) -> None:
         if not self._is_tty(): return
