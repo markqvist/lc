@@ -1,16 +1,17 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
-"""OpenAI-compatible model backend for lc."""
-
 import RNS
 import json
+import time
 from typing import List, Dict, Any, Optional
 
 from lc.agent import ModelBackend
 
 
 class OpenAIBackend(ModelBackend):
-    """OpenAI API-compatible backend (works with local servers)."""
+    CONNECT_TIMEOUT = 10
+    READ_TIMEOUT    = 1800
+    REQUEST_TRIES = 6
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -23,24 +24,10 @@ class OpenAIBackend(ModelBackend):
         import requests
         self.session = requests.Session()
     
-    def complete(
-        self,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
-        """Send completion request."""
-        
-        return self._complete_requests(messages, tools)
+    def complete(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        return self._complete(messages, tools)
         
     def _sanitize_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Sanitize messages for llama.cpp compatibility.
-        
-        - Removes reasoning_content fields (causes prefill issues)
-        - Ensures content is null (not empty string) for assistant tool calls
-        - Removes name field from non-tool messages
-        - Preserves multimodal content arrays (list-type content)
-        """
         sanitized = []
         for msg in messages:
             clean_msg = dict(msg)
@@ -52,78 +39,76 @@ class OpenAIBackend(ModelBackend):
             if clean_msg.get("role") == "assistant":
                 # If there are tool_calls, content should be null not empty string
                 if clean_msg.get("tool_calls"):
-                    if clean_msg.get("content") == "":
-                        clean_msg["content"] = None
+                    if clean_msg.get("content") == "": clean_msg["content"] = None
+                
                 # Remove name if present (not valid for assistant)
                 clean_msg.pop("name", None)
             
             # Handle tool messages
+            # Ensure tool_call_id is present
             if clean_msg.get("role") == "tool":
-                # Ensure tool_call_id is present
-                if not clean_msg.get("tool_call_id"):
-                    clean_msg["tool_call_id"] = "unknown"
+                if not clean_msg.get("tool_call_id"): clean_msg["tool_call_id"] = "unknown"
             
             # Handle system/user messages - remove name if present
-            if clean_msg.get("role") in ("system", "user"):
-                clean_msg.pop("name", None)
-                # Preserve multimodal content arrays (list-type content for images)
-                # No transformation needed - pass through as-is
+            # Preserve multimodal content arrays (list-type content for images)
+            # No transformation needed - pass through as-is
+            if clean_msg.get("role") in ("system", "user"): clean_msg.pop("name", None)
             
             sanitized.append(clean_msg)
         
         return sanitized
     
-    def _complete_requests(
-        self,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]],
-    ) -> Dict[str, Any]:
-        """Complete using requests library."""
+    def _complete(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
         import requests
+        attempts_left = self.REQUEST_TRIES
         
-        headers = {
-            "Content-Type": "application/json",
-        }
-        
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        # Sanitize messages for llama.cpp compatibility
+        headers = { "Content-Type": "application/json",
+                    "Connection": "close" }
+
+        if self.api_key: headers["Authorization"] = f"Bearer {self.api_key}"
+
         sanitized_messages = self._sanitize_messages(messages)
         
-        payload = {
-            "model": self.model,
-            "messages": sanitized_messages,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-        }
+        payload = { "model": self.model,
+                    "messages": sanitized_messages,
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens }
         
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
+
+        payload_json = json.dumps(payload, ensure_ascii=False)
         
-        response = self.session.post(
-            f"{self.base_url}/chat/completions",
-            headers=headers,
-            json=payload,
-        )
-        response.raise_for_status()
+        while attempts_left:
+            attempts_left -= 1
+            try:
+                RNS.log("Sending inference request", RNS.LOG_DEBUG)
+                response = self.session.post(f"{self.base_url}/chat/completions",
+                                             headers=headers,
+                                             data=payload_json,
+                                             timeout=(self.CONNECT_TIMEOUT, self.READ_TIMEOUT))
+                response.raise_for_status()
+                data = response.json()
+                message = data["choices"][0]["message"]
+
+                RNS.log("Inference request succeeded", RNS.LOG_DEBUG)
+                
+                result = { "message": { "role": message["role"],
+                                        "content": message.get("content", "") } }
+
+                # Extract reasoning content if present
+                if "reasoning_content" in message: result["message"]["reasoning_content"] = message["reasoning_content"]
+                if "tool_calls" in message: result["message"]["tool_calls"] = message["tool_calls"]
+                
+                return result
+
+            except Exception as e:
+                RNS.log(f"Error during inference request: {e}", RNS.LOG_ERROR)
+                RNS.trace_exception(e)
+                if attempts_left:
+                    backoff = self.REQUEST_TRIES-attempts_left+1
+                    RNS.log(f"Retrying request in {RNS.prettytime(backoff)}", RNS.LOG_ERROR)
+                    time.sleep(backoff)
         
-        data = response.json()
-        message = data["choices"][0]["message"]
-        
-        result = {
-            "message": {
-                "role": message["role"],
-                "content": message.get("content", ""),
-            }
-        }
-        
-        # Extract reasoning content if present (Qwen3, etc.)
-        if "reasoning_content" in message:
-            result["message"]["reasoning_content"] = message["reasoning_content"]
-        
-        if "tool_calls" in message:
-            result["message"]["tool_calls"] = message["tool_calls"]
-        
-        return result
+        raise SystemError("Inference request failed")
