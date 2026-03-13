@@ -11,7 +11,7 @@ from lc.agent import ModelBackend
 class OpenAIBackend(ModelBackend):
     CONNECT_TIMEOUT = 10
     READ_TIMEOUT    = 1800
-    REQUEST_TRIES = 6
+    REQUEST_TRIES = 8
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config

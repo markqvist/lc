@@ -107,16 +107,13 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
     from RNS.vendor import umsgpack
     import signal
     
-    session_file = _resolve_session_file(config, session_ref)
-    if not session_file:
-        print(f"Error: Session not found: {session_ref}", file=sys.stderr)
-        return 1
-    
     # Track state between polls
     last_mtime = 0
     last_msg_count = 0
     header_printed = False
     running = True
+    waiting_for_session = True
+    session_file = None
     
     def handle_interrupt(sig, frame):
         nonlocal running
@@ -127,6 +124,28 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
     
     try:
         while running:
+            # Try to resolve session file (may not exist yet)
+            if session_file is None or not session_file.exists():
+                session_file = _resolve_session_file(config, session_ref)
+                if session_file is None:
+                    if waiting_for_session:
+                        print(f"Waiting for session '{session_ref}' to appear...", end="\r")
+                        sys.stdout.flush()
+                        time.sleep(0.5)
+                        continue
+                    else:
+                        print(f"\n*[Session file deleted, waiting...]*")
+                        waiting_for_session = True
+                        time.sleep(0.5)
+                        continue
+
+                else: waiting_for_session = False
+            
+            # Session found, proceed with normal logic
+            if waiting_for_session and session_file.exists():
+                waiting_for_session = False
+                print(f"{' ' * 60}", end="\r")  # Clear waiting message
+            
             try:
                 current_mtime = session_file.stat().st_mtime
                 if current_mtime > last_mtime:
@@ -136,7 +155,7 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
                     conversation = data.get("conversation", [])
                     current_msg_count = len(conversation)
                     
-                    # Print header on first run
+                    # Print header and all existing messages on first run
                     if not header_printed:
                         session_name = data.get("name")
                         session_id = data.get("session_id", "unknown")
@@ -146,8 +165,68 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
                         print()
                         print("## Conversation Transcript")
                         print()
-                        print(f"*[Following session, {current_msg_count} messages initially]*")
-                        print()
+                        
+                        # Render all existing messages
+                        for i, msg in enumerate(conversation):
+                            msg_num = i + 1
+                            role = msg.get("role", "unknown")
+                            content = msg.get("content")
+                            tool_calls = msg.get("tool_calls", [])
+                            tool_call_id = msg.get("tool_call_id")
+                            name = msg.get("name")
+                            reasoning_content = msg.get("reasoning_content")
+                            
+                            if role == "assistant" and tool_calls:
+                                print(f"### Message {msg_num}: Assistant [Tool Call{'s' if len(tool_calls) > 1 else ''}]")
+                                print()
+                                if content:
+                                    print(f"*Assistant commentary:* {content.lstrip().rstrip()}")
+                                    print()
+                                for tc in tool_calls:
+                                    fn = tc.get("function", {})
+                                    tc_name = fn.get("name", "unknown")
+                                    tc_args = fn.get("arguments", {})
+                                    tc_id = tc.get("id", "unknown")
+                                    print(f"**{tc_name}** `{tc_id}`")
+                                    if tc_args:
+                                        if isinstance(tc_args, dict):
+                                            for key, val in tc_args.items():
+                                                print(f"- `{key}`: `{val}`")
+                                        else:
+                                            print(f"- Arguments: `{tc_args}`")
+                                    print()
+                            elif role == "assistant":
+                                text = content or ""
+                                print(f"### Message {msg_num}: Assistant")
+                                print()
+                                if reasoning_content:
+                                    print(f"*Reasoning:*")
+                                    print("```")
+                                    print(reasoning_content.lstrip().rstrip())
+                                    print("```")
+                                    print()
+                                print(text)
+                                print()
+                            elif role == "tool":
+                                text = content or ""
+                                print(f"### Message {msg_num}: Tool Result")
+                                print()
+                                print(f"**Tool:** `{name or 'unknown'}`  ")
+                                print(f"**Call ID:** `{tool_call_id or 'unknown'}`")
+                                print()
+                                print("````")
+                                print(text.lstrip().rstrip())
+                                print("````")
+                                print()
+                            elif role == "user":
+                                text = content or ""
+                                print(f"### Message {msg_num}: User")
+                                print()
+                                for line in text.splitlines():
+                                    print(f"> {line}")
+                                print()
+                        
+                        sys.stdout.flush()
                         header_printed = True
                         last_msg_count = current_msg_count
                     
@@ -167,17 +246,14 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
                             if role == "assistant" and tool_calls:
                                 print(f"### Message {msg_num}: Assistant [Tool Call{'s' if len(tool_calls) > 1 else ''}]")
                                 print()
-                                if content:
-                                    print("*Assistant commentary:*")
-                                    print(content)
-                                    print()
+                                if content: print(f"**Assistant commentary:** {content.lstrip().rstrip()}\n")
+                                
                                 for tc in tool_calls:
                                     fn = tc.get("function", {})
                                     tc_name = fn.get("name", "unknown")
                                     tc_args = fn.get("arguments", {})
                                     tc_id = tc.get("id", "unknown")
                                     print(f"**{tc_name}** `{tc_id}`")
-                                    print()
                                     if tc_args:
                                         if isinstance(tc_args, dict):
                                             for key, val in tc_args.items():
@@ -185,6 +261,7 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
                                         else:
                                             print(f"- Arguments: `{tc_args}`")
                                     print()
+
                             elif role == "assistant":
                                 text = content or ""
                                 print(f"### Message {msg_num}: Assistant")
@@ -192,7 +269,7 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
                                 if reasoning_content:
                                     print("*Reasoning:*")
                                     print("```")
-                                    print(reasoning_content)
+                                    print(reasoning_content.lstrip().rstrip())
                                     print("```")
                                     print()
                                 print(text)
@@ -205,7 +282,7 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
                                 print(f"**Call ID:** `{tool_call_id or 'unknown'}`")
                                 print()
                                 print("````")
-                                print(text)
+                                print(text.lstrip().rstrip())
                                 print("````")
                                 print()
                             elif role == "user":
@@ -228,9 +305,11 @@ def follow_session(config: Config, session_ref: str, verbose: bool = True) -> in
                     last_mtime = current_mtime
                     
             except FileNotFoundError:
-                # Session file deleted, keep polling
-                if last_mtime > 0:
+                # Session file deleted, reset and wait for it to reappear
+                if not waiting_for_session:
                     print(f"\n*[Session file deleted, waiting...]*")
+                    waiting_for_session = True
+                    session_file = None
                     last_mtime = 0
                     
             except Exception as e:
@@ -433,8 +512,7 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
                 add()
                 # Show content if present (sometimes assistant adds commentary)
                 if content:
-                    add("*Assistant commentary:*")
-                    add(content)
+                    add(f"*Assistant commentary:* {content.lstrip().rstrip()}")
                     add()
 
                 for tc in tool_calls:
@@ -444,7 +522,6 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
                     tc_id = tc.get("id", "unknown")
                     
                     add(f"**{tc_name}** `{tc_id}`")
-                    add()
                     if tc_args:
                         if isinstance(tc_args, dict):
                             for key, val in tc_args.items():
@@ -464,10 +541,10 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
                 
                 add(f"### Message {msg_num}: Assistant")
                 add()
-                if reasoning_content and (verbose or not is_pipe):
+                if reasoning_content:
                     add("*Reasoning:*")
                     add("```")
-                    add(reasoning_content)
+                    add(reasoning_content.lstrip().rstrip())
                     add("```")
                     add()
                 add(text)
