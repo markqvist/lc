@@ -445,7 +445,7 @@ class Session:
 
             # Create agent and run turn
             agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt, output_mode=output_mode)
-            output = agent.run_turn(command)
+            output = agent.run_turn(command, checkpoint_callback=self.save)
 
             self.turn_count += 1
             self.save()

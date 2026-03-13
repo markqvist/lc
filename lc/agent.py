@@ -32,13 +32,14 @@ class Agent:
         show_reasoning   = session.config.display.get("show_reasoning", True) and output_mode == "tty"
         self.renderer    = TTYRenderer(show_reasoning=show_reasoning, mode=output_mode)
     
-    def run_turn(self, user_input: str) -> str:
+    def run_turn(self, user_input: str, checkpoint_callback: Callable = None) -> str:
+        if checkpoint_callback: checkpoint_callback()
         # Note: User message already added by session.execute()
         # Just ensure we have the latest tools and model response
         tools = self._get_all_tools()
         response = self._call_model(tools)
         
-        return self._process_response(response)
+        return self._process_response(response, checkpoint_callback=checkpoint_callback)
     
     def _get_all_tools(self) -> List[Dict[str, Any]]:
         tools = []
@@ -85,7 +86,7 @@ class Agent:
             self.renderer.clear_thinking()
             raise e
     
-    def _process_response(self, response: Dict[str, Any]) -> str:
+    def _process_response(self, response: Dict[str, Any], checkpoint_callback: Callable = None) -> str:
         message = response.get("message", {})
         tool_calls = message.get("tool_calls", [])
         
@@ -102,6 +103,7 @@ class Agent:
             multimodal_content = []
             
             for tool_call in tool_calls:
+                if checkpoint_callback: checkpoint_callback()
                 result, modality = self._execute_tool_call(tool_call)
                 
                 # Handle image modality specially
@@ -126,7 +128,7 @@ class Agent:
                 })
             
             final_response = self._call_model(self._get_all_tools())
-            return self._process_response(final_response)
+            return self._process_response(final_response, checkpoint_callback=checkpoint_callback)
         
         # No tool calls - just content response
         content = message.get("content", "")
