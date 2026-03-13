@@ -117,11 +117,14 @@ class SkillRegistry:
         
         skill_name = skill.path.name
         module_name = f"lc.skill.{skill_name}"
+
+        RNS.log(f"Loading skill toolkit from {skill_name}...", RNS.LOG_DEBUG)
         
         try:
             # Load module from file
             spec = importlib.util.spec_from_file_location(module_name, init_py)
             if spec is None or spec.loader is None:
+                RNS.log(f"Could not load spec from {init_py}", RNS.LOG_ERROR)
                 raise ImportError(f"Could not load spec from {init_py}")
             
             module = importlib.util.module_from_spec(spec)
@@ -147,6 +150,8 @@ class SkillRegistry:
             
         except Exception as e:
             raise RuntimeError(f"Failed to load skill toolkit from {skill.path}: {e}") from e
+
+        RNS.log(f"Skill toolkit from {skill_name} loaded", RNS.LOG_DEBUG)
     
     def get_skill(self, name: str) -> Optional[Skill]:
         """Get a skill by name."""

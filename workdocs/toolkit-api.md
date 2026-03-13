@@ -9,7 +9,6 @@ Tools in `lc` are organized into Toolkits — Python classes that group related 
 ```python
 from lc.toolkit import Toolkit, tool
 from typing import List
-from pydantic import BaseModel
 
 class WebTools(Toolkit):
     """Toolkit for web operations."""
@@ -100,25 +99,6 @@ Gate levels:
 - `2`: Execution (read-only commands)
 - `3`: Execution with modification (rm, mv, etc.)
 
-## Type Hints and Schema
-
-Use Pydantic models for complex arguments:
-
-```python
-from pydantic import BaseModel, Field
-
-class SearchQuery(BaseModel):
-    terms: List[str] = Field(description="Search terms")
-    max_results: int = Field(default=10, ge=1, le=100)
-    include_deprecated: bool = Field(default=False)
-
-class SearchTools(Toolkit):
-    @tool
-    def search(self, query: SearchQuery) -> str:
-        # query.terms, query.max_results, etc.
-        pass
-```
-
 ## Return Values
 
 Tools should return strings. The agent will receive this as the tool result:
@@ -152,7 +132,6 @@ Built-in toolkits are loaded from `lc/tools/`. Custom toolkits are loaded by imp
 
 1. **Keep tools focused**: One clear operation per tool
 2. **Document thoroughly**: Docstrings become tool descriptions
-3. **Validate inputs**: Use Pydantic for complex args
 4. **Return errors gracefully**: Never crash the session
 5. **Use context for cross-cutting concerns**: Don't reimplement config/session access
 6. **Idempotent where possible**: Same input → same output

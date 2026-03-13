@@ -73,7 +73,7 @@ Core conversation loop. Handles:
 
 ### toolkit.py
 Base class for all tool collections. Responsible for:
-- Tool schema extraction (via Pydantic)
+- Tool schema extraction for argument mapping
 - Tool dispatch with context injection
 - Gating level enforcement
 

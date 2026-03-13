@@ -8,8 +8,6 @@ from abc import ABC
 from typing import Dict, List, Any, Callable, Optional, get_type_hints
 from functools import wraps
 
-from pydantic import BaseModel, create_model
-
 
 class Context:
     
@@ -113,7 +111,7 @@ class Toolkit(ABC):
                      list: {"type": "array"},
                      dict: {"type": "object"} }
         
-        if isinstance(param_type, type) and issubclass(param_type, BaseModel): return param_type.model_json_schema()
+        # if isinstance(param_type, type) and issubclass(param_type, BaseModel): return param_type.model_json_schema()
         
         # Handle List[X] and Optional[X]
         origin = getattr(param_type, '__origin__', None)
