@@ -4,6 +4,7 @@
 
 import RNS
 import argparse
+import json
 import time
 import sys
 import os
@@ -28,6 +29,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("-n", "--name", type=str, metavar="NAME", help="Name for new session (for easy reference later)")
     parser.add_argument("-R", "--rebuild", action="store_true", help="Rebuild system prompt on resume (invalidates KV-cache, loads new skills, etc.)")
     parser.add_argument("-l", "--list-sessions", action="store_true", help="List available sessions and exit")
+    parser.add_argument("-S", "--inspect-session", type=str, metavar="ID|PATH", help="Inspect session by ID/name or path to msgpack file")
     parser.add_argument("--readme", action="store_true", help="Display the readme")
     parser.add_argument("--guide", action="store_true", help="Display the guide")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
@@ -76,6 +78,264 @@ def list_sessions(config: Config) -> int:
 
         working_dir = session.get("working_dir", "")[:30]
         print(f"{name:<20} {sid:<36} {msg_count:<10} {time_str:<20} {working_dir}")
+    
+    return 0
+
+
+def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", verbose: bool = True) -> int:
+    from lc.session import SessionManager
+    from RNS.vendor import umsgpack
+    from pathlib import Path
+    
+    # Try to resolve session_ref to a file path
+    session_file = None
+    
+    # Case 1: Direct file path
+    path = Path(session_ref).expanduser().resolve()
+    if path.exists() and path.is_file():
+        session_file = path
+    
+    # Case 2: UUID or name resolution
+    if not session_file:
+        # Try UUID first
+        uuid_path = config.path / "sessions" / f"{session_ref}.msgpack"
+        if uuid_path.exists(): session_file = uuid_path
+        else:
+            # Try as name
+            named_file = SessionManager.find_session_by_name(config, session_ref)
+            if named_file: session_file = named_file
+    
+    if not session_file or not session_file.exists():
+        print(f"Error: Session not found: {session_ref}", file=sys.stderr)
+        return 1
+    
+    # Load the session data
+    try:
+        with open(session_file, "rb") as f: data = umsgpack.unpack(f)
+    
+    except Exception as e:
+        print(f"Error: Failed to load session file: {e}", file=sys.stderr)
+        return 1
+    
+    # Format as markdown
+    lines = []
+    is_pipe = output_mode == "pipe"
+    
+    def add(line: str = ""): lines.append(line)
+    
+    # Header
+    session_name = data.get("name")
+    session_id = data.get("session_id", "unknown")
+    display_title = session_name or session_id[:8] + "..."
+    
+    add(f"# Session: {display_title}")
+    add()
+    
+    # Metadata section
+    add("## Metadata")
+    add()
+    add("| Field | Value |")
+    add("|-------|-------|")
+    add(f"| Session ID | `{session_id}` |")
+    add(f"| Name | {session_name or '*unnamed*'} |")
+    
+    created_at = data.get("created_at", 0)
+    updated_at = data.get("updated_at", 0)
+    try:
+        created_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(created_at))
+        updated_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(updated_at))
+    except:
+        created_str = str(created_at)
+        updated_str = str(updated_at)
+    
+    add(f"| Created | {created_str} |")
+    add(f"| Updated | {updated_str} |")
+    add(f"| Working Directory | `{data.get('working_dir', 'unknown')}` |")
+    add(f"| Config Path | `{data.get('config_path', 'unknown')}` |")
+    add(f"| Format Version | {data.get('version', 'unknown')} |")
+    add()
+    
+    # Statistics section
+    stats = data.get("stats", {})
+    conversation = data.get("conversation", [])
+    
+    # Count message types
+    user_msgs = len([m for m in conversation if m.get("role") == "user"])
+    assistant_msgs = len([m for m in conversation if m.get("role") == "assistant"])
+    tool_msgs = len([m for m in conversation if m.get("role") == "tool"])
+    system_msgs = len([m for m in conversation if m.get("role") == "system"])
+    
+    add("## Statistics")
+    add()
+    add(f"- **Turns**: {stats.get('turn_count', 0)}")
+    add(f"- **Messages**: {len(conversation)} ({user_msgs} user, {assistant_msgs} assistant, {tool_msgs} tool, {system_msgs} system)")
+    # add(f"- **Tool Calls**: {stats.get('tool_call_count', 0)}") # TODO: Stats not counting, fix
+    # add(f"- **Token Count**: {stats.get('token_count', 0)}") # TODO: I don't think we're even counting this from `usage` fields, fix
+    add()
+    
+    # Loaded skills
+    loaded_skills = data.get("loaded_skills", [])
+    if loaded_skills:
+        add("## Loaded Skills")
+        add()
+        for skill in loaded_skills: add(f"- `{skill}`")
+        add()
+    
+    # Tool context
+    tool_context = data.get("tool_context", {})
+    if tool_context and verbose:
+        add("## Tool Context")
+        add()
+        add("```json")
+        add(json.dumps(tool_context, indent=2))
+        add("```")
+        add()
+    
+    # Configuration snapshot
+    config_snapshot = data.get("config_snapshot", {})
+    if config_snapshot and verbose:
+        add("## Configuration Snapshot")
+        add()
+        add("```json")
+        add(json.dumps(config_snapshot, indent=2))
+        add("```")
+        add()
+    elif not config_snapshot:
+        add("## Configuration Snapshot")
+        add()
+        add("*Not captured in this session*")
+        add()
+    
+    # Conversation transcript
+    add("## Conversation Transcript")
+    add()
+    
+    for i, msg in enumerate(conversation):
+        role = msg.get("role", "unknown")
+        content = msg.get("content")
+        tool_calls = msg.get("tool_calls", [])
+        tool_call_id = msg.get("tool_call_id")
+        name = msg.get("name")
+        reasoning_content = msg.get("reasoning_content")
+        
+        # Skip empty messages in pipe mode for brevity
+        if is_pipe and not content and not tool_calls and role not in ("tool", "system"):
+            continue
+        
+        msg_num = i + 1
+        
+        if role == "system":
+            add(f"### Message {msg_num}: System")
+            add()
+            if content:
+                content_len = len(content)
+                if verbose or is_pipe:
+                    add("````")
+                    add(content)
+                    add("````")
+                else:
+                    add(f"*[System prompt: {content_len} characters]*")
+            add()
+        
+        elif role == "user":
+            # Handle multimodal content
+            if isinstance(content, list):
+                add(f"### Message {msg_num}: User [Multimodal]")
+                add()
+                for item in content:
+                    if item.get("type") == "text":
+                        text = item.get("text", "")
+                        add(f"> {text}")
+                    elif item.get("type") == "image_url":
+                        url = item.get("image_url", {}).get("url", "")
+                        if url.startswith("data:"): add(f"> *[Image data URI: {len(url)} chars]*")
+                        else: add(f"> *[Image: {url}]*")
+                add()
+            else:
+                text = content or ""
+                # Truncate long content in TTY mode
+                if not is_pipe and not verbose and len(text) > 500:
+                    text = text[:497] + "..."
+                add(f"### Message {msg_num}: User")
+                add()
+                for line in text.splitlines(): add(f"> {line}")
+                add()
+        
+        elif role == "assistant":
+            if tool_calls:
+                add(f"### Message {msg_num}: Assistant [Tool Call{'s' if len(tool_calls) > 1 else ''}]")
+                add()
+                # Show content if present (sometimes assistant adds commentary)
+                if content:
+                    add("*Assistant commentary:*")
+                    add(content)
+                    add()
+
+                for tc in tool_calls:
+                    fn = tc.get("function", {})
+                    tc_name = fn.get("name", "unknown")
+                    tc_args = fn.get("arguments", {})
+                    tc_id = tc.get("id", "unknown")
+                    
+                    add(f"**{tc_name}** `{tc_id}`")
+                    add()
+                    if tc_args:
+                        if isinstance(tc_args, dict):
+                            for key, val in tc_args.items():
+                                val_str = str(val)
+                                if not is_pipe and len(val_str) > 200:
+                                    val_str = val_str[:197] + "..."
+                                add(f"- `{key}`: `{val_str}`")
+                        
+                        else: add(f"- Arguments: `{tc_args}`")
+                    add()
+                
+            else:
+                text = content or ""
+                # Truncate long content in TTY mode
+                if not is_pipe and not verbose and len(text) > 800:
+                    text = text[:797] + "..."
+                
+                add(f"### Message {msg_num}: Assistant")
+                add()
+                if reasoning_content and (verbose or not is_pipe):
+                    add("*Reasoning:*")
+                    add("```")
+                    add(reasoning_content)
+                    add("```")
+                    add()
+                add(text)
+                add()
+        
+        elif role == "tool":
+            text = content or ""
+            # Truncate long content in TTY mode
+            if not is_pipe and not verbose and len(text) > 600:
+                text = text[:597] + "..."
+            
+            add(f"### Message {msg_num}: Tool Result")
+            add()
+            add(f"**Tool:** `{name or 'unknown'}`  ")
+            add(f"**Call ID:** `{tool_call_id or 'unknown'}`")
+            add()
+            # add("/// details | Tool Output")
+            add("````")
+            add(text)
+            add("````")
+            # add("///")
+            add()
+        
+        else:
+            add(f"### Message {msg_num}: {role}")
+            add()
+            add(f"```json")
+            add(json.dumps(msg, indent=2))
+            add("```")
+            add()
+    
+    # Output the formatted markdown
+    output = "\n".join(lines)
+    print(output)
     
     return 0
 
@@ -186,6 +446,13 @@ def main() -> int:
         
         # Handle session listing
         if args.list_sessions: return list_sessions(config)
+        
+        # Handle session inspection
+        if args.inspect_session:
+            # Detect TTY state for output formatting
+            stdout_is_tty = sys.stdout.isatty()
+            output_mode = "tty" if stdout_is_tty else "pipe"
+            return inspect_session(config, args.inspect_session, output_mode=output_mode, verbose=args.verbose)
         
         # Detect TTY states for input prompting and output formatting
         stdin_is_tty = sys.stdin.isatty()
