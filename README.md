@@ -203,6 +203,49 @@ $ lc -r --rebuild
 
 Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not mine.
 
+### Session Inspection & Streaming
+
+You want a fancy new UI? We already have UI at home. But okay, sometimes you want to watch the chaos unfold in style. Or maybe you just want to review what happened while you were making coffee.
+
+**Inspect a session (one-shot):**
+```bash
+# Dump to terminal
+$ lc --inspect-session "docs-refactor"
+
+# Save to file for later analysis
+$ lc -S "debug_session" > session_log.md
+```
+
+**Stream a live session (follow mode):**
+```bash
+# Watch session updates in real-time
+$ lc --inspect-session "docs-refactor" --follow
+
+# Pipe to your favorite markdown viewer for instant UI
+$ lc -S "docs-refactor" -F | mdless
+$ lc -S "docs-refactor" -F | glow
+$ lc -S "docs-refactor" -F | bat --language=markdown
+
+# Redirect it to a file and watch the chaos unfold in Obsidian
+$ lc -S "docs-refactor" -F > ~/Notes/its_happening.md
+
+# Start follower before the session exists (useful for automation)
+$ lc -S "my_session" -F | mdless
+# (in another terminal) $ lc -n "my_session" -i
+```
+
+**Acceptable for:**
+- Monitoring long-running tasks from another terminal
+- Creating a "heads-up display" with your markdown renderer of choice
+- Logging session activity for later review
+- Pretending you're in a cyberpunk fantasyscape watching an AI work
+
+**How it works:**
+- On first run, prints the complete conversation history
+- Incrementally renders only new messages as they appear
+- If the session doesn't exist yet, waits rather impatiently for it to appear
+- Handles session deletion/reappearance gracefully
+
 ### Pipe/stdin/stdout Support
 
 `lc` can receive input via pipes:
