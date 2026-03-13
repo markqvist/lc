@@ -29,6 +29,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("-R", "--rebuild", action="store_true", help="Rebuild system prompt on resume (invalidates KV-cache, loads new skills, etc.)")
     parser.add_argument("-l", "--list-sessions", action="store_true", help="List available sessions and exit")
     parser.add_argument("-S", "--inspect-session", type=str, metavar="ID|PATH", help="Inspect session by ID/name or path to msgpack file")
+    parser.add_argument("-f", "--follow", action="store_true", help="Follow session updates (stream mode, use with --inspect-session)")
     parser.add_argument("--readme", action="store_true", help="Display the readme")
     parser.add_argument("--guide", action="store_true", help="Display the guide")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
@@ -75,6 +76,175 @@ def list_sessions(config: Config) -> int:
 
         working_dir = session.get("working_dir", "")[:30]
         print(f"{name:<20} {sid:<36} {msg_count:<10} {time_str:<20} {working_dir}")
+    
+    return 0
+
+
+def _resolve_session_file(config: Config, session_ref: str) -> Optional[Path]:
+    """Resolve session reference to file path."""
+    from lc.session import SessionManager
+    
+    # Case 1: Direct file path
+    path = Path(session_ref).expanduser().resolve()
+    if path.exists() and path.is_file():
+        return path
+    
+    # Case 2: UUID
+    uuid_path = config.path / "sessions" / f"{session_ref}.msgpack"
+    if uuid_path.exists():
+        return uuid_path
+    
+    # Case 3: Name resolution
+    named_file = SessionManager.find_session_by_name(config, session_ref)
+    if named_file:
+        return named_file
+    
+    return None
+
+
+def follow_session(config: Config, session_ref: str, verbose: bool = True) -> int:
+    """Stream session updates as they occur."""
+    from RNS.vendor import umsgpack
+    import signal
+    
+    session_file = _resolve_session_file(config, session_ref)
+    if not session_file:
+        print(f"Error: Session not found: {session_ref}", file=sys.stderr)
+        return 1
+    
+    # Track state between polls
+    last_mtime = 0
+    last_msg_count = 0
+    header_printed = False
+    running = True
+    
+    def handle_interrupt(sig, frame):
+        nonlocal running
+        running = False
+    
+    # Restore default signal handler for clean exit
+    old_handler = signal.signal(signal.SIGINT, handle_interrupt)
+    
+    try:
+        while running:
+            try:
+                current_mtime = session_file.stat().st_mtime
+                if current_mtime > last_mtime:
+                    with open(session_file, "rb") as f:
+                        data = umsgpack.unpack(f)
+                    
+                    conversation = data.get("conversation", [])
+                    current_msg_count = len(conversation)
+                    
+                    # Print header on first run
+                    if not header_printed:
+                        session_name = data.get("name")
+                        session_id = data.get("session_id", "unknown")
+                        display_title = session_name or session_id[:8] + "..."
+                        
+                        print(f"# Session: {display_title}")
+                        print()
+                        print("## Conversation Transcript")
+                        print()
+                        print(f"*[Following session, {current_msg_count} messages initially]*")
+                        print()
+                        header_printed = True
+                        last_msg_count = current_msg_count
+                    
+                    # Render new messages
+                    elif current_msg_count > last_msg_count:
+                        new_messages = conversation[last_msg_count:]
+                        # Render new messages directly
+                        for i, msg in enumerate(new_messages):
+                            msg_num = last_msg_count + i + 1
+                            role = msg.get("role", "unknown")
+                            content = msg.get("content")
+                            tool_calls = msg.get("tool_calls", [])
+                            tool_call_id = msg.get("tool_call_id")
+                            name = msg.get("name")
+                            reasoning_content = msg.get("reasoning_content")
+                            
+                            if role == "assistant" and tool_calls:
+                                print(f"### Message {msg_num}: Assistant [Tool Call{'s' if len(tool_calls) > 1 else ''}]")
+                                print()
+                                if content:
+                                    print("*Assistant commentary:*")
+                                    print(content)
+                                    print()
+                                for tc in tool_calls:
+                                    fn = tc.get("function", {})
+                                    tc_name = fn.get("name", "unknown")
+                                    tc_args = fn.get("arguments", {})
+                                    tc_id = tc.get("id", "unknown")
+                                    print(f"**{tc_name}** `{tc_id}`")
+                                    print()
+                                    if tc_args:
+                                        if isinstance(tc_args, dict):
+                                            for key, val in tc_args.items():
+                                                print(f"- `{key}`: `{val}`")
+                                        else:
+                                            print(f"- Arguments: `{tc_args}`")
+                                    print()
+                            elif role == "assistant":
+                                text = content or ""
+                                print(f"### Message {msg_num}: Assistant")
+                                print()
+                                if reasoning_content:
+                                    print("*Reasoning:*")
+                                    print("```")
+                                    print(reasoning_content)
+                                    print("```")
+                                    print()
+                                print(text)
+                                print()
+                            elif role == "tool":
+                                text = content or ""
+                                print(f"### Message {msg_num}: Tool Result")
+                                print()
+                                print(f"**Tool:** `{name or 'unknown'}`  ")
+                                print(f"**Call ID:** `{tool_call_id or 'unknown'}`")
+                                print()
+                                print("````")
+                                print(text)
+                                print("````")
+                                print()
+                            elif role == "user":
+                                text = content or ""
+                                print(f"### Message {msg_num}: User")
+                                print()
+                                for line in text.splitlines():
+                                    print(f"> {line}")
+                                print()
+                        
+                        sys.stdout.flush()
+                        last_msg_count = current_msg_count
+                    
+                    # Handle session reset (messages deleted)
+                    elif current_msg_count < last_msg_count:
+                        print(f"\n*[Session reset: {last_msg_count} -> {current_msg_count} messages]*")
+                        print()
+                        last_msg_count = current_msg_count
+                    
+                    last_mtime = current_mtime
+                    
+            except FileNotFoundError:
+                # Session file deleted, keep polling
+                if last_mtime > 0:
+                    print(f"\n*[Session file deleted, waiting...]*")
+                    last_mtime = 0
+                    
+            except Exception as e:
+                # Log error but keep polling
+                print(f"\n*[Error reading session: {e}]*", file=sys.stderr)
+            
+            if running:
+                time.sleep(0.5)
+                
+    except BrokenPipeError:
+        # Viewer closed, exit cleanly
+        pass
+    finally:
+        signal.signal(signal.SIGINT, old_handler)
     
     return 0
 
@@ -444,6 +614,10 @@ def main() -> int:
         
         # Handle session inspection
         if args.inspect_session:
+            # Handle follow mode (streaming)
+            if args.follow:
+                return follow_session(config, args.inspect_session, verbose=args.verbose)
+            
             # Detect TTY state for output formatting
             stdout_is_tty = sys.stdout.isatty()
             output_mode = "tty" if stdout_is_tty else "pipe"
