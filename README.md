@@ -245,7 +245,7 @@ Tools are just Python. Write a `Toolkit`:
 from lc.toolkit import Toolkit, tool
 
 class MyTools(Toolkit):
-    @tool(gate_level=0)
+    @tool(gate_level=0, modality="text")
     def hello(self, name: str) -> str:
         """Say hello to someone."""
         return f"Hello, {name}! Working in: {self.context.session.working_dir}"
