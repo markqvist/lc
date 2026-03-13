@@ -42,7 +42,6 @@ setup(
     install_requires=[
         "rns>=1.1.3",
         "lxmf>=0.6.0",
-        "Jinja2>=3.0.0",
         "requests>=2.31",
     ],
     python_requires=">=3.9",

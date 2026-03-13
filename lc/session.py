@@ -6,7 +6,7 @@ import os
 import RNS
 import uuid
 import time
-import jinja2
+from lc.vendor import jinja2
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from types import SimpleNamespace
