@@ -9,6 +9,7 @@ import sys
 import os
 from pathlib import Path
 from typing import Optional
+from importlib import resources as importlib_resources
 
 from lc.session import Session
 from lc.config import Config
@@ -27,6 +28,8 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("-n", "--name", type=str, metavar="NAME", help="Name for new session (for easy reference later)")
     parser.add_argument("-R", "--rebuild", action="store_true", help="Rebuild system prompt on resume (invalidates KV-cache, loads new skills, etc.)")
     parser.add_argument("-l", "--list-sessions", action="store_true", help="List available sessions and exit")
+    parser.add_argument("--readme", action="store_true", help="Display the readme")
+    parser.add_argument("--guide", action="store_true", help="Display the guide")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("--version", action="version", version=f"%(prog)s {Session.get_version()}")
     
@@ -155,10 +158,28 @@ def read_stdin(config: Config) -> Optional[tuple[str, bool]]:
         
         return (text, False)
 
+def data_path(filename: str) -> Path:
+    pkg = __package__ if __package__ else 'lc'
+    return importlib_resources.files(pkg).joinpath('data', filename)
+
 def main() -> int:
     parser      = create_argument_parser()
     args        = parser.parse_args()
     config_path = resolve_config_path(args.config)
+
+    try:
+        if args.readme:
+            with open(data_path("README.md"), "rb") as fh: print(fh.read().decode("utf-8"))
+            return 0
+
+        if args.guide:
+            with open(data_path("GUIDE.md"), "rb") as fh: print(fh.read().decode("utf-8"))
+            return 0
+
+    except Exception as e:
+        print("Error while loading documentation")
+        RNS.trace_exception(e)
+        return 255
     
     try:
         config = Config.load(config_path)

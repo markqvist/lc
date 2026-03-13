@@ -15,6 +15,14 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, "README.md"), "r", encoding="utf-8") as f: long_description = f.read()
 exec(open("lc/_version.py", "r").read())
 
+package_data = {
+"": [
+    "data/README.md",
+    "data/GUIDE.md",
+    "data/Chrome_Horizons.md",
+    ]
+}
+
 setup(
     name="lc",
     version=__version__,
@@ -25,6 +33,7 @@ setup(
     author_email="",
     url="",
     packages=find_packages(),
+    package_data=package_data,
     entry_points={
         "console_scripts": [
             "lc=lc.__main__:main",
