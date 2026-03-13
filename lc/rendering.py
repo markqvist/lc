@@ -87,7 +87,8 @@ class TTYRenderer:
         if arguments:
             for key, value in arguments.items():
                 display_value = str(value)
-                if len(display_value) > 33: display_value = display_value[:32] + "…"
+                # This is getting scary pretty fast. No more argument truncation.
+                # if len(display_value) > 33: display_value = display_value[:32] + "…"
                 self.write(f" {self.DIM}{key}:{self.RESET} {display_value}", end="")
 
         self.write("")
