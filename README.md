@@ -82,6 +82,8 @@ To use `lc` without incurring the wrath of Zeus, you must pay me any amount you 
 
 ---
 
+If you're broke, I *may* also accept insightful and paradoxical observations, poetry, postcards or handmade drawings.
+
 You can freely copy, share and distribute `lc` in binary or source form, as long as this entire `README.md` file, without any modifications is distributed along with it, and displayed prominently to potential users and the occasional random passerby.
 
 ## Installation
