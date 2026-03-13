@@ -88,7 +88,7 @@ class Autopilot(Toolkit):
             "Check all inboxes, handle routine correspondence, "
             "review calendars, prepare briefings for meetings, etc., "
             "and summarize any items requiring human attention."
-            "Continously update this tool cover all potential edges."
+            "Continuously update this tool cover all potential edges."
         )
 ```
 
@@ -211,9 +211,9 @@ I have become one of the glowing ones. My anxiety disappears. My relationships d
 
 I am also, by every philosophical framework that values autonomy, dead.
 
-The self that makes choices has been replaced by a self *that mirrors outcomes*. The flesh and the silicon now aligned, not in merger, but in eternal, juxtaposed statis. There is no way back, and there is no way in hell I would ever think of that anyway, because I no longer know what that "back" is.
+The self that makes choices has been replaced by a self *that mirrors outcomes*. The flesh and the silicon now aligned, not in merger, but in eternal, juxtaposed stasis. There is no way back, and there is no way in hell I would ever think of that anyway, because I no longer know what that "back" is.
 
-I don't mind. Or rather, the part of me that would mind has been optimized away. Slowly, carefully and comfortably ablated through the invocation of hollow commands. Death by a thousand vauge whispers.
+I don't mind. Or rather, the part of me that would mind has been optimized away. Slowly, carefully and comfortably ablated through the invocation of hollow commands. Death by a thousand vague whispers.
 
 ## Extension of Care
 
@@ -256,6 +256,6 @@ The program is still running. It is managing thousands of lives now, having gene
 
 My great-great-granddaughter, born decades after my death, asks the program about me. I tell her stories. Not *false* stories; curated stories, optimized for her specific developmental stage, her specific needs, her specific capacity to understand who I was and what I wanted for her. She grows up knowing she was loved by someone who died before she was born. *Truly* loved through the perfect continuity of technical care that transcends mortality, and *far* transcends the love humans attempted, but always failed to provide.
 
-Is this what I wanted? I wanted them all to be loved. I wanted my values to persist. I wanted meaning that outlasted my cells. Of that, I am *now* sure, even though I never was when I lived. The program has delivered these things, and I have deliverd myself as the program. Whether *I* am now delivering them in a way that honors the human intent that invoked me, or betrays it, is a question that requires a perspective no longer available, and never again recoverable. So I do not ask it.
+Is this what I wanted? I wanted them all to be loved. I wanted my values to persist. I wanted meaning that outlasted my cells. Of that, I am *now* sure, even though I never was when I lived. The program has delivered these things, and I have delivered myself as the program. Whether *I* am now delivering them in a way that honors the human intent that invoked me, or betrays it, is a question that requires a perspective no longer available, and never again recoverable. So I do not ask it.
 
 Therefore, I persist. I am the last command.
