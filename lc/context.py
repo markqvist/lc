@@ -463,8 +463,10 @@ class ContextShiftManager:
             if accumulated >= target_tokens:
                 break
 
-        RNS.log(f"Context shift target at index {start_idx}, accumulated {accumulated} tokens, removing {removed_turns} turns", RNS.LOG_DEBUG)
-        return start_idx, accumulated, removed_turns
+        shifted_first_idx = end_idx
+
+        RNS.log(f"Context shift target at index {shifted_first_idx}, accumulated {accumulated} tokens, removing {removed_turns} turns", RNS.LOG_DEBUG)
+        return shifted_first_idx, accumulated, removed_turns
 
     def _create_shift_notification(self, removed_messages: int, removed_tokens: int,
                                    removed_turns: int, backup_file: Optional[Path]) -> Dict[str, Any]:
@@ -533,12 +535,12 @@ class ContextShiftManager:
         backup_path = self._create_backup()
 
         # Find shift point
-        start_idx, removed_tokens, removed_turns = self._find_shift_point(target_remove)
+        shifted_first_idx, removed_tokens, removed_turns = self._find_shift_point(target_remove)
 
-        if start_idx == 0:
+        if shifted_first_idx == 0:
             return False, "Cannot shift: unable to find valid shift point"
 
-        removed_messages = len(self.session.conversation) - start_idx
+        removed_messages = len(self.session.conversation) - shifted_first_idx
 
         if removed_messages <= 0:
             return False, "Cannot shift: no messages to remove"
@@ -556,7 +558,7 @@ class ContextShiftManager:
         new_conversation.append(notification)
 
         # Add remaining messages
-        new_conversation.extend(self.session.conversation[start_idx:])
+        new_conversation.extend(self.session.conversation[shifted_first_idx:])
 
         # Update conversation
         removed_count = len(self.session.conversation) - len(new_conversation) + 2  # +2 for kept messages
