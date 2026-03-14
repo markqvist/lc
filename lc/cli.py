@@ -468,10 +468,19 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
         add("*Not captured in this session*")
         add()
     
+    # Context analysis for per-message token lookup
+    context_analysis = data.get("context_analysis", [])
+    message_token_map = {}
+    for turn in context_analysis:
+        for mt in turn.get("message_tokens", []):
+            idx = mt.get("index")
+            if idx is not None and idx not in message_token_map:
+                message_token_map[idx] = (mt.get("estimated_tokens", 0), mt.get("is_estimated", True))
+
     # Conversation transcript
     add("## Conversation Transcript")
     add()
-    
+
     for i, msg in enumerate(conversation):
         role = msg.get("role", "unknown")
         content = msg.get("content")
@@ -487,7 +496,9 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
         msg_num = i + 1
         
         if role == "system":
-            add(f"### Message {msg_num}: System")
+            token_count, is_est = message_token_map.get(i, (None, True))
+            token_str = f" ~{token_count}tk" if token_count else ""
+            add(f"### Message {msg_num}: System{token_str}")
             add()
             if content:
                 content_len = len(content)
@@ -500,9 +511,11 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
             add()
         
         elif role == "user":
+            token_count, is_est = message_token_map.get(i, (None, True))
+            token_str = f" ~{token_count}tk" if token_count else ""
             # Handle multimodal content
             if isinstance(content, list):
-                add(f"### Message {msg_num}: User [Multimodal]")
+                add(f"### Message {msg_num}: User [Multimodal]{token_str}")
                 add()
                 for item in content:
                     if item.get("type") == "text":
@@ -518,14 +531,16 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
                 # Truncate long content in TTY mode
                 if not is_pipe and not verbose and len(text) > 500:
                     text = text[:497] + "..."
-                add(f"### Message {msg_num}: User")
+                add(f"### Message {msg_num}: User{token_str}")
                 add()
                 for line in text.splitlines(): add(f"> {line}")
                 add()
         
         elif role == "assistant":
+            token_count, is_est = message_token_map.get(i, (None, True))
+            token_str = f" ~{token_count}tk" if token_count else ""
             if tool_calls:
-                add(f"### Message {msg_num}: Assistant [Tool Call{'s' if len(tool_calls) > 1 else ''}]")
+                add(f"### Message {msg_num}: Assistant [Tool Call{'s' if len(tool_calls) > 1 else ''}]{token_str}")
                 add()
                 # Show content if present (sometimes assistant adds commentary)
                 if content:
@@ -555,8 +570,8 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
                 # Truncate long content in TTY mode
                 if not is_pipe and not verbose and len(text) > 800:
                     text = text[:797] + "..."
-                
-                add(f"### Message {msg_num}: Assistant")
+
+                add(f"### Message {msg_num}: Assistant{token_str}")
                 add()
                 if reasoning_content:
                     add("*Reasoning:*")
@@ -568,12 +583,14 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
                 add()
         
         elif role == "tool":
+            token_count, is_est = message_token_map.get(i, (None, True))
+            token_str = f" ~{token_count}tk" if token_count else ""
             text = content or ""
             # Truncate long content in TTY mode
             if not is_pipe and not verbose and len(text) > 600:
                 text = text[:597] + "..."
-            
-            add(f"### Message {msg_num}: Tool Result")
+
+            add(f"### Message {msg_num}: Tool Result{token_str}")
             add()
             add(f"**Tool:** `{name or 'unknown'}`  ")
             add(f"**Call ID:** `{tool_call_id or 'unknown'}`")

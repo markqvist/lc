@@ -42,6 +42,7 @@ class ContextAnalyzer:
         self.turn_breakdowns: List[TurnTokenBreakdown] = []
         self._last_conversation_length = 0
         self._last_prompt_tokens = 0
+        RNS.log(f"ContextAnalyzer initialized for session {session.session_id[:8]}...", RNS.LOG_DEBUG)
 
     def record_turn(self, usage: Dict[str, Any], conversation: List[Dict[str, Any]]) -> TurnTokenBreakdown:
         """Record token usage for a turn and compute per-message estimates.
@@ -149,11 +150,20 @@ class ContextAnalyzer:
         self._last_conversation_length = len(conversation)
         self._last_prompt_tokens = prompt_tokens
 
+        RNS.log(f"ContextAnalyzer recorded turn {breakdown.turn}: "
+                f"prompt={prompt_tokens}, completion={completion_tokens}, "
+                f"total={total_tokens}, new_msgs={new_message_count}, "
+                f"tracked={len(message_tokens)}", RNS.LOG_DEBUG)
+        
+        for m in message_tokens:
+            RNS.log(f"{m.index} {m.role}: {m.estimated_tokens}")
+
         return breakdown
 
     def _estimate_message_tokens(self, message: Dict[str, Any]) -> int:
         """Estimate token count for a single message using character heuristic."""
         content = message.get("content", "")
+        role = message.get("role", "unknown")
 
         if isinstance(content, str):
             char_count = len(content)
@@ -174,7 +184,10 @@ class ContextAnalyzer:
         # Add overhead for message structure (role, etc.)
         overhead = 10
 
-        return max(1, int((char_count + overhead) / self.CHARS_PER_TOKEN))
+        estimated = max(1, int((char_count + overhead) / self.CHARS_PER_TOKEN))
+        RNS.log(f"ContextAnalyzer estimated {role} message: {char_count} chars ~ {estimated} tokens", RNS.LOG_DEBUG)
+
+        return estimated
 
     def estimate_current_tokens(self, conversation: List[Dict[str, Any]]) -> int:
         """Estimate total tokens for current conversation state.
@@ -190,7 +203,9 @@ class ContextAnalyzer:
         """
         if not self.turn_breakdowns:
             # No history - use pure heuristic
-            return sum(self._estimate_message_tokens(msg) for msg in conversation)
+            total = sum(self._estimate_message_tokens(msg) for msg in conversation)
+            RNS.log(f"ContextAnalyzer estimated total (no history): {total} tokens for {len(conversation)} messages", RNS.LOG_DEBUG)
+            return total
 
         # Start with last known prompt token count
         last_breakdown = self.turn_breakdowns[-1]
@@ -200,8 +215,11 @@ class ContextAnalyzer:
         new_count = len(conversation) - self._last_conversation_length
         if new_count > 0:
             new_messages = conversation[-new_count:]
-            for msg in new_messages:
-                total += self._estimate_message_tokens(msg)
+            estimated_new = sum(self._estimate_message_tokens(msg) for msg in new_messages)
+            total += estimated_new
+            RNS.log(f"ContextAnalyzer estimated total: {last_breakdown.prompt_tokens} (known) + {estimated_new} ({new_count} new) = {total} tokens", RNS.LOG_DEBUG)
+        else:
+            RNS.log(f"ContextAnalyzer estimated total: {total} tokens (no new messages)", RNS.LOG_DEBUG)
 
         return total
 
@@ -275,5 +293,9 @@ class ContextAnalyzer:
             # We can't know exact conversation length from breakdown alone
             # This will be corrected on next record_turn call
             analyzer._last_conversation_length = 0  # Will be set correctly on next record
+            RNS.log(f"ContextAnalyzer restored from dict: {len(analyzer.turn_breakdowns)} turns, "
+                    f"last_prompt={analyzer._last_prompt_tokens}", RNS.LOG_DEBUG)
+        else:
+            RNS.log("ContextAnalyzer restored from dict: no turn data", RNS.LOG_DEBUG)
 
         return analyzer
