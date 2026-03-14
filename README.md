@@ -88,12 +88,14 @@ You can freely copy, share and distribute `lc` in binary or source form, as long
 
 ## Installation
 
-I started writing `lc` less than three days ago. Things will change, rapidly. Data formats might break, arguments change. Your kitchen may disappear. If none of that scares you:
+While the concept of `lc` had been playing pong in my head for some time, I have so far spent `<=` 3 days on this. Things will change, rapidly. Data formats might break, arguments change. Your kitchen may disappear. If none of that scares you:
 
 ```bash
 # Obtain a release .whl file, either by floppy
 # or download. Then install with:
-pip install ./lc-0.3.1-py3-none-any.whl
+pip install ./lc-0.3.6-py3-none-any.whl
+
+# Yes, it actually fits on a floppy.
 ```
 
 Or, if you prefer living on the edge of the possible:
