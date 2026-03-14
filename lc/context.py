@@ -2,9 +2,12 @@
 
 """Context management for lc sessions."""
 
+import os
 import RNS
+import shutil
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from dataclasses import dataclass, field
+from pathlib import Path
 
 if TYPE_CHECKING:
     from lc.session import Session
@@ -154,9 +157,6 @@ class ContextAnalyzer:
                 f"prompt={prompt_tokens}, completion={completion_tokens}, "
                 f"total={total_tokens}, new_msgs={new_message_count}, "
                 f"tracked={len(message_tokens)}", RNS.LOG_DEBUG)
-        
-        for m in message_tokens:
-            RNS.log(f"{m.index} {m.role}: {m.estimated_tokens}")
 
         return breakdown
 
@@ -240,6 +240,29 @@ class ContextAnalyzer:
 
         return 0
 
+    def recalculate_from_messages(self, conversation: List[Dict[str, Any]]) -> int:
+        """Recalculate total token estimate from message estimates.
+
+        Used after context shift to update input_tokens estimate.
+
+        Args:
+            conversation: Current conversation list after shift
+
+        Returns:
+            Estimated total token count
+        """
+        total = 0
+        for i, msg in enumerate(conversation):
+            # Try to get tracked count first
+            count = self.get_message_token_count(i)
+            if count == 0:
+                # Fall back to heuristic
+                count = self._estimate_message_tokens(msg)
+            total += count
+
+        RNS.log(f"ContextAnalyzer recalculated after shift: {total} tokens for {len(conversation)} messages", RNS.LOG_DEBUG)
+        return total
+
     def to_dict(self) -> List[Dict[str, Any]]:
         """Serialize turn breakdowns for persistence."""
         result = []
@@ -299,3 +322,253 @@ class ContextAnalyzer:
             RNS.log("ContextAnalyzer restored from dict: no turn data", RNS.LOG_DEBUG)
 
         return analyzer
+
+
+class ContextShiftManager:
+    """Manages context shifting for long sessions."""
+
+    # TODO: Future enhancement - guarantee last N messages are preserved
+    # regardless of token count, for continuity of recent context
+
+    def __init__(self, session: "Session"):
+        self.session = session
+        self.shift_count = 0
+
+    def _get_config(self) -> tuple[int, float]:
+        """Get context limit and shift factor from config.
+
+        Returns:
+            Tuple of (context_limit, shift_factor)
+        """
+        context_limit = self.session.config.model.get("context_limit", 128000)
+        shift_factor = self.session.config.model.get("context_shift_factor", 0.35)
+        return context_limit, shift_factor
+
+    def should_shift(self, estimated_tokens: int) -> bool:
+        """Check if context shift is needed.
+
+        Args:
+            estimated_tokens: Estimated current token count
+
+        Returns:
+            True if shift should be performed
+        """
+        context_limit, shift_factor = self._get_config()
+
+        # shift_factor = 0 disables context shifting
+        if shift_factor <= 0:
+            return False
+
+        return estimated_tokens >= context_limit
+
+    def _find_backup_path(self) -> Optional[Path]:
+        """Find next available backup file path.
+
+        Returns:
+            Path for backup file, or None if session not persisted
+        """
+        sessions_dir = self.session.config.path / "sessions"
+        if not sessions_dir.exists():
+            return None
+
+        base_name = f"{self.session.session_id}.msgpack"
+        counter = 1
+
+        while True:
+            backup_path = sessions_dir / f"{base_name}.{counter}"
+            if not backup_path.exists():
+                return backup_path
+            counter += 1
+
+    def _create_backup(self) -> Optional[Path]:
+        """Create backup of current session file.
+
+        Returns:
+            Path to backup file, or None if backup not created
+        """
+        sessions_dir = self.session.config.path / "sessions"
+        session_file = sessions_dir / f"{self.session.session_id}.msgpack"
+
+        if not session_file.exists():
+            RNS.log("ContextShiftManager: No session file to backup", RNS.LOG_DEBUG)
+            return None
+
+        backup_path = self._find_backup_path()
+        if backup_path is None:
+            return None
+
+        try:
+            shutil.copy2(session_file, backup_path)
+            RNS.log(f"ContextShiftManager: Session backed up to {backup_path.name}", RNS.LOG_DEBUG)
+            return backup_path
+        except Exception as e:
+            RNS.log(f"ContextShiftManager: Failed to create backup: {e}", RNS.LOG_ERROR)
+            return None
+
+    def _find_shift_point(self, target_tokens: int) -> tuple[int, int, int]:
+        """Find the index to shift at, preserving system and first user message.
+
+        Args:
+            target_tokens: Number of tokens to remove
+
+        Returns:
+            Tuple of (start_index, removed_tokens, removed_turns)
+            start_index is the first message to remove (after first user message)
+        """
+        RNS.log("Finding context shift point target...", RNS.LOG_DEBUG)
+        conversation = self.session.conversation
+
+        if not conversation:
+            return 0, 0, 0
+
+        # Find first user message index
+        first_user_idx = None
+        for i, msg in enumerate(conversation):
+            if msg.get("role") == "user":
+                first_user_idx = i
+                break
+
+        if first_user_idx is None:
+            # No user message found - can't shift meaningfully
+            return 0, 0, 0
+
+        # Start removing after first user message
+        start_idx = first_user_idx + 1
+
+        # Accumulate tokens until we reach target
+        accumulated = 0
+        end_idx = start_idx
+        removed_turns = 0
+
+        analyzer = self.session.context_analyzer
+
+        for i in range(start_idx, len(conversation)):
+            msg = conversation[i]
+
+            # Count turns being removed (user messages indicate new turns)
+            if msg.get("role") == "user":
+                removed_turns += 1
+
+            # Get token count for this message
+            token_count = 0
+            if analyzer:
+                token_count = analyzer.get_message_token_count(i)
+            if token_count == 0:
+                # Estimate from message content
+                token_count = analyzer._estimate_message_tokens(msg) if analyzer else 10
+
+            accumulated += token_count
+            end_idx = i + 1
+
+            if accumulated >= target_tokens:
+                break
+
+        RNS.log(f"Context shift target at index {start_idx}, accumulated {accumulated} tokens, removing {removed_turns} turns", RNS.LOG_DEBUG)
+        return start_idx, accumulated, removed_turns
+
+    def _create_shift_notification(self, removed_messages: int, removed_tokens: int,
+                                   removed_turns: int, backup_file: Optional[Path]) -> Dict[str, Any]:
+        """Create the context shift notification message.
+
+        Args:
+            removed_messages: Number of messages removed
+            removed_tokens: Approximate tokens removed
+            removed_turns: Number of prior turns removed
+            backup_file: Path to backup file (if created)
+
+        Returns:
+            User message dict with notification content
+        """
+        backup_info = f" Original session preserved in {backup_file.name}." if backup_file else ""
+
+        content = (
+            f"[Context shifted: removed {removed_messages} messages (~{removed_tokens} tokens), "
+            f"{removed_turns} prior turns condensed.{backup_info}]"
+        )
+
+        return {"role": "user", "content": content}
+
+    def perform_shift(self) -> tuple[bool, str]:
+        """Perform context shift if needed.
+
+        Returns:
+            Tuple of (shift_occurred, message)
+        """
+        # Check if shift is needed
+        analyzer = self.session.context_analyzer
+        if not analyzer:
+            RNS.log("ContextShiftManager: No analyzer available", RNS.LOG_WARNING)
+            return False, "No context analyzer available"
+
+        estimated_tokens = analyzer.estimate_current_tokens(self.session.conversation)
+
+        if not self.should_shift(estimated_tokens):
+            return False, ""
+
+        context_limit, shift_factor = self._get_config()
+        target_remove = int(context_limit * shift_factor)
+
+        RNS.log(f"ContextShiftManager: Shifting context. Current estimate: {estimated_tokens}, "
+                f"limit: {context_limit}, target removal: {target_remove}", RNS.LOG_INFO)
+
+        # Check edge cases
+        if len(self.session.conversation) < 3:
+            return False, "Cannot shift: conversation too short"
+
+        # Find first user message
+        first_user_idx = None
+        for i, msg in enumerate(self.session.conversation):
+            if msg.get("role") == "user":
+                first_user_idx = i
+                break
+
+        if first_user_idx is None:
+            return False, "Cannot shift: no user message found"
+
+        # Check if there's anything to remove after first user
+        if first_user_idx + 1 >= len(self.session.conversation):
+            return False, "Cannot shift: no messages after first user message"
+
+        # Create backup
+        backup_path = self._create_backup()
+
+        # Find shift point
+        start_idx, removed_tokens, removed_turns = self._find_shift_point(target_remove)
+
+        if start_idx == 0:
+            return False, "Cannot shift: unable to find valid shift point"
+
+        removed_messages = len(self.session.conversation) - start_idx
+
+        if removed_messages <= 0:
+            return False, "Cannot shift: no messages to remove"
+
+        # Perform the shift
+        new_conversation = [
+            self.session.conversation[0],  # System prompt
+            self.session.conversation[first_user_idx],  # First user message
+        ]
+
+        # Add shift notification
+        notification = self._create_shift_notification(
+            removed_messages, removed_tokens, removed_turns, backup_path
+        )
+        new_conversation.append(notification)
+
+        # Add remaining messages
+        new_conversation.extend(self.session.conversation[start_idx:])
+
+        # Update conversation
+        removed_count = len(self.session.conversation) - len(new_conversation) + 2  # +2 for kept messages
+        self.session.conversation = new_conversation
+
+        # Recalculate token estimate
+        new_estimate = analyzer.recalculate_from_messages(self.session.conversation)
+        self.session.input_tokens = new_estimate
+
+        self.shift_count += 1
+
+        msg = f"Context shifted: removed {removed_messages} messages (~{removed_tokens} tokens)"
+        RNS.log(f"ContextShiftManager: {msg}", RNS.LOG_INFO)
+
+        return True, msg
