@@ -14,12 +14,14 @@ class Filesystem(Toolkit):
     gate_level = 0
     
     @tool(gate_level=0)
-    def read(self, path: str) -> str:
+    def read(self, path: str, from_line: int = 0, lines = 1000) -> str:
         """
         Read contents of a file.
         
         Args:
             path: Path to the file to read
+            from_line: Start position of read in lines, defaults to beginning of file
+            lines: Maximum number of lines to read
         
         Returns:
             File contents as string, or error message
@@ -34,8 +36,18 @@ class Filesystem(Toolkit):
             # Read as text
             try:
                 content = file_path.read_text(encoding='utf-8')
-                return content
-            
+                split   = content.splitlines()
+                total   = len(split)
+                
+                if total      <= lines: return content
+                else:
+                    selected   = split[from_line:from_line+lines]
+                    count      = len(selected)
+                    remaining  = total-(from_line+count)
+                    truncated  = "\n".join(selected)
+                    continuity = from_line+lines
+                    return f"{truncated}\n\n (showing {count} lines, {remaining} remaining in file, use from_line={continuity} to continue)"
+
             except UnicodeDecodeError:
                 # Try as binary with limited output
                 content = file_path.read_bytes()[:2048]

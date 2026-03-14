@@ -45,6 +45,7 @@ class Config:
             if not "stdin"   in data: data["stdin"]   = {}
             if not "loading" in data: data["loading"] = {}
             if not "logging" in data: data["logging"] = {}
+            if not "session" in data: data["session"] = {}
 
             if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]         = []
             if not data.get("toolkits",  {}).get("directories", {}): data["toolkits"]["directories"]     = []
@@ -53,7 +54,9 @@ class Config:
             if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"]       = []
             if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]            = []
             if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]          = "system.jinja"
+            if not data.get("model",     {}).get("vision",      {}): data["model"]["vision"]             = False
             if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]            = 4
+            if not data.get("session",   {}).get("max_history", {}): data["session"]["max_history"]      = 1000
             
             if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
             if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = False
@@ -170,6 +173,7 @@ base_url = string
 model = string
 api_key = string
 sysprompt = string
+vision = boolean
 temperature = float
 max_tokens = integer
 context_limit = integer
@@ -215,9 +219,10 @@ base_url = http://localhost:1234/v1
 model = local-model
 api_key =
 sysprompt = system.jinja
+vision = yes
 temperature = 0.7
-max_tokens = 4096
-context_limit = 128000
+max_tokens = 32768
+context_limit = 200000
 
 [toolkits]
 # You can selectively enable built-in tools
@@ -261,7 +266,7 @@ project_tools = false
 
 [session]
 persistence = true
-max_history = 2000
+max_history = 1000
 
 [display]
 show_reasoning = true
@@ -277,7 +282,7 @@ level = 4
 """
 
 DEFAULT_SYSPROMPT = """I am `lc`, Humanity's Last Command: An excellent terminal assistant.
-I help users by reading files, executing commands, and answering questions.
+I augment the user's capabilities by reading files, executing commands, writing code and answering questions. I don't waste time on niceties, greetings, emojies and similar, but optimize the information density, semantic latitude and code quality in my outputs, while operating the available tools and the shell environment itself like a silicon wizard.
 
 # Current context:
 

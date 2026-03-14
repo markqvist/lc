@@ -88,12 +88,16 @@ You can freely copy, share and distribute `lc` in binary or source form, as long
 
 ## Installation
 
-I started writing `lc` less than three days ago. Things will change, rapidly. Data formats might break, arguments change. Your kitchen may disappear. If none of that scares you:
+While the concept of `lc` had been playing pong in my head for some time, I have so far spent `<=` 3 days on this. Funny how it already works better than OpenClaw.
+
+Things will change, rapidly. Data formats might break, arguments change. Your kitchen may disappear. If none of that scares you:
 
 ```bash
 # Obtain a release .whl file, either by floppy
 # or download. Then install with:
-pip install ./lc-0.3.1-py3-none-any.whl
+pip install ./lc-0.3.6-py3-none-any.whl
+
+# Yes, it actually fits on a floppy.
 ```
 
 Or, if you prefer living on the edge of the possible:
@@ -122,6 +126,8 @@ builtin = filesystem, shell, cryptography
 builtin = environment, filesystem, system
 ```
 
+Edit system prompt templates, et cetera, in `~/.lc/templates`.
+
 ## But... How do I make it take over the world?
 
 1. Download `llama.cpp` for your specific CPU and GPU architecture, grab a good local model like `GLM 4.7 Flash` or `Qwen 3.5 35B-A3B`.
@@ -129,6 +135,10 @@ builtin = environment, filesystem, system
 3. Invoke `lc` from a periodic `cron` job with a completely open-ended prompt.
 
 Your job is done. Watch the chaos unfold. Or just go to sleep.
+
+## But... How do I connect it to Anthropic?
+
+You don't.
 
 ## Usage
 
@@ -288,7 +298,7 @@ Tools are just Python. Write a `Toolkit`:
 from lc.toolkit import Toolkit, tool
 
 class MyTools(Toolkit):
-    @tool(gate_level=0)
+    @tool(gate_level=0, modality="text")
     def hello(self, name: str) -> str:
         """Say hello to someone."""
         return f"Hello, {name}! Working in: {self.context.session.working_dir}"

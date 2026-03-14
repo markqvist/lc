@@ -50,7 +50,7 @@ class Cryptography(Toolkit):
             if not file_path.is_file(): return f"Error: Not a file: {path}"
             
             try:
-                signature_path = file_path.with_suffix(self.SIG_EXT)
+                signature_path = file_path.with_name(file_path.name + self.SIG_EXT)
                 signature = None
                 with open(file_path, "rb") as fh: signature = identity.sign(fh.read())
                 if not signature: raise ValueError("No signature returned from signing handler")
@@ -106,7 +106,7 @@ class Cryptography(Toolkit):
 
             if path.endswith(".rsg"): path = path[:-4]
             file_path = Path(path).expanduser()
-            signature_path = file_path.with_suffix(self.SIG_EXT)
+            signature_path = file_path.with_name(file_path.name + self.SIG_EXT)
             
             if not file_path.exists():       return f"Error: Target file {path} for validation not found"
             if not file_path.is_file():      return f"Error: Target file {path} for validation is not a file"
