@@ -361,6 +361,9 @@ class ContextShiftManager:
     def __init__(self, session: "Session"):
         self.session = session
         self.shift_count = 0
+        self.cumulative_removed_messages = 0
+        self.cumulative_removed_tokens = 0
+        self.cumulative_removed_turns = 0
 
     def _get_config(self) -> tuple[int, float]:
         """Get context limit and shift factor from config.
@@ -499,9 +502,9 @@ class ContextShiftManager:
         """Create the context shift notification message.
 
         Args:
-            removed_messages: Number of messages removed
-            removed_tokens: Approximate tokens removed
-            removed_turns: Number of prior turns removed
+            removed_messages: Number of messages removed this shift
+            removed_tokens: Approximate tokens removed this shift
+            removed_turns: Number of prior turns removed this shift
             backup_file: Path to backup file (if created)
 
         Returns:
@@ -509,10 +512,22 @@ class ContextShiftManager:
         """
         backup_info = f" Original session preserved in {backup_file.name}." if backup_file else ""
 
-        content = (
-            f"[Context shifted: removed {removed_messages} messages (~{removed_tokens} tokens), "
-            f"{removed_turns} prior turns condensed.{backup_info}]"
-        )
+        # Include cumulative stats if this isn't the first shift
+        if self.shift_count > 0:
+            total_messages = self.cumulative_removed_messages + removed_messages
+            total_tokens = self.cumulative_removed_tokens + removed_tokens
+            total_turns = self.cumulative_removed_turns + removed_turns
+            
+            content = (
+                f"[Context shifted: removed {removed_messages} messages with ~{removed_tokens:,} tokens "
+                f"this shift, {total_messages} messages with ~{total_tokens:,} tokens total, "
+                f"{removed_turns} turns condensed this shift, {total_turns} total.{backup_info}]"
+            )
+        else:
+            content = (
+                f"[Context shifted: removed {removed_messages} messages (~{removed_tokens:,} tokens), "
+                f"{removed_turns} prior turns condensed.{backup_info}]"
+            )
 
         return {"role": "user", "content": content}
 
@@ -530,8 +545,7 @@ class ContextShiftManager:
 
         estimated_tokens = analyzer.estimate_current_tokens(self.session.conversation)
 
-        if not self.should_shift(estimated_tokens):
-            return False, ""
+        if not self.should_shift(estimated_tokens): return False, ""
 
         context_limit, shift_factor = self._get_config()
         target_remove = int(context_limit * shift_factor)
@@ -540,8 +554,7 @@ class ContextShiftManager:
                 f"limit: {context_limit}, target removal: {target_remove}", RNS.LOG_INFO)
 
         # Check edge cases
-        if len(self.session.conversation) < 3:
-            return False, "Cannot shift: conversation too short"
+        if len(self.session.conversation) < 3: return False, "Cannot shift: conversation too short"
 
         # Find first user message
         first_user_idx = None
@@ -550,26 +563,27 @@ class ContextShiftManager:
                 first_user_idx = i
                 break
 
-        if first_user_idx is None:
-            return False, "Cannot shift: no user message found"
+        if first_user_idx is None: return False, "Cannot shift: no user message found"
 
         # Check if there's anything to remove after first user
-        if first_user_idx + 1 >= len(self.session.conversation):
-            return False, "Cannot shift: no messages after first user message"
+        if first_user_idx + 1 >= len(self.session.conversation): return False, "Cannot shift: no messages after first user message"
 
         # Create backup
         backup_path = self._create_backup()
 
         # Find shift point
         start_idx, end_idx, removed_tokens, removed_turns = self._find_shift_point(target_remove)
+        if end_idx == 0: return False, "Cannot shift: unable to find valid shift point"
 
-        if end_idx == 0:
-            return False, "Cannot shift: unable to find valid shift point"
+        pre_shift_count = len(self.session.conversation)
+        removed_messages = pre_shift_count - (2+len(self.session.conversation[end_idx:]))
+        RNS.log(f"Removing {removed_messages} from session...", RNS.LOG_DEBUG)
+        if removed_messages <= 0: return False, "Cannot shift: no messages to remove"
 
-        removed_messages = len(self.session.conversation) - end_idx
-
-        if removed_messages <= 0:
-            return False, "Cannot shift: no messages to remove"
+        # Update cumulative stats BEFORE creating notification
+        self.cumulative_removed_messages += removed_messages
+        self.cumulative_removed_tokens += removed_tokens
+        self.cumulative_removed_turns += removed_turns
 
         # Perform the shift
         new_conversation = [
@@ -578,9 +592,7 @@ class ContextShiftManager:
         ]
 
         # Add shift notification
-        notification = self._create_shift_notification(
-            removed_messages, removed_tokens, removed_turns, backup_path
-        )
+        notification = self._create_shift_notification(removed_messages, removed_tokens, removed_turns, backup_path)
         new_conversation.append(notification)
 
         # Add remaining messages
