@@ -19,7 +19,7 @@ class OpenAIBackend(ModelBackend):
         self.model = config.get("model", "local-model")
         self.api_key = config.get("api_key", "")
         self.temperature = config.get("temperature", 0.7)
-        self.max_tokens = config.get("max_tokens", 4096)
+        self.max_tokens = config.get("max_tokens", 32768)
         
         import requests
         self.session = requests.Session()
