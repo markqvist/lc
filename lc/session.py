@@ -212,11 +212,6 @@ class Session:
         completion_tokens = usage.get("completion_tokens", 0)
         total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
 
-        # Update cumulative counters
-        self.input_tokens += prompt_tokens
-        self.output_tokens += completion_tokens
-        self.total_tokens += total_tokens
-
         # Record per-turn breakdown
         turn_record = {
             "turn": self.turn_count + 1,
@@ -226,6 +221,17 @@ class Session:
             "timestamp": time.time()
         }
         self.turn_usage.append(turn_record)
+
+        # Cumulative totals:
+        # - input_tokens: current conversation size (last turn's prompt_tokens)
+        # - output_tokens: sum of all completion_tokens across turns
+        # - total_tokens: use API's reported total (cumulative prompt + completion)
+        if self.turn_usage:
+            self.input_tokens = self.turn_usage[-1].get("prompt_tokens", 0)
+            self.output_tokens = sum(t.get("completion_tokens", 0) for t in self.turn_usage)
+            # Use the API's total_tokens from the most recent turn
+            # This is the accurate cumulative count (not input + output, which double-counts)
+            self.total_tokens = self.turn_usage[-1].get("total_tokens", self.input_tokens + self.output_tokens)
     
     def _initialize(self) -> None:
         self._load_skill_registry()
