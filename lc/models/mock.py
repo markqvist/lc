@@ -58,5 +58,10 @@ class MockBackend(ModelBackend):
             "message": {
                 "role": "assistant",
                 "content": f"[MOCK] Received: {last_message}\n\nI would normally process this and use tools if needed.",
+            },
+            "usage": {
+                "prompt_tokens": len(last_message) // 4,
+                "completion_tokens": 50,
+                "total_tokens": len(last_message) // 4 + 50
             }
         }

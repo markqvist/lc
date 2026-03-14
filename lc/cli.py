@@ -61,9 +61,9 @@ def list_sessions(config: Config) -> int:
         print("No sessions found.")
         return 0
     
-    print(f"{'Name':<20} {'ID':<36} {'Messages':<10} {'Updated':<20} {'Directory'}")
+    print(f"{'Name':<20} {'ID':<36} {'Msgs':<6} {'Tokens':<10} {'Updated':<16} {'Directory'}")
     print("-" * 120)
-    
+
     for session in sessions:
         session_name = session.get("name", "") or ""
         name = session_name[:18]
@@ -71,12 +71,17 @@ def list_sessions(config: Config) -> int:
         msg_count = len([m for m in session.get("conversation", []) if m.get("role") in ("user", "assistant")])
         updated = session.get("updated_at", 0)
 
+        # Token usage
+        stats = session.get("stats", {})
+        total_tokens = stats.get("total_tokens", stats.get("token_count", 0))
+        tokens_str = f"{total_tokens:,}" if total_tokens else "-"
+
         try:    time_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(updated))
         except: time_str = "unknown"
 
         working_dir = session.get("working_dir", "")[:30]
-        print(f"{name:<20} {sid:<36} {msg_count:<10} {time_str:<20} {working_dir}")
-    
+        print(f"{name:<20} {sid:<36} {msg_count:<6} {tokens_str:<10} {time_str:<16} {working_dir}")
+
     return 0
 
 
@@ -414,8 +419,20 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
     add()
     add(f"- **Turns**: {stats.get('turn_count', 0)}")
     add(f"- **Messages**: {len(conversation)} ({user_msgs} user, {assistant_msgs} assistant, {tool_msgs} tool, {system_msgs} system)")
-    # add(f"- **Tool Calls**: {stats.get('tool_call_count', 0)}") # TODO: Stats not counting, fix
-    # add(f"- **Token Count**: {stats.get('token_count', 0)}") # TODO: I don't think we're even counting this from `usage` fields, fix
+    add(f"- **Tool Calls**: {stats.get('tool_call_count', 0)}")
+
+    # Token usage (new format with detailed breakdown)
+    input_tokens = stats.get('input_tokens', 0)
+    output_tokens = stats.get('output_tokens', 0)
+    total_tokens = stats.get('total_tokens', stats.get('token_count', 0))
+
+    if input_tokens or output_tokens:
+        add(f"- **Tokens**: {total_tokens:,} ({input_tokens:,} input, {output_tokens:,} output)")
+    elif total_tokens:
+        add(f"- **Tokens**: {total_tokens:,} (legacy count)")
+    else:
+        add(f"- **Tokens**: -")
+
     add()
     
     # Loaded skills

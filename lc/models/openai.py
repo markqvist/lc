@@ -93,14 +93,23 @@ class OpenAIBackend(ModelBackend):
                 message = data["choices"][0]["message"]
 
                 RNS.log("Inference request succeeded", RNS.LOG_DEBUG)
-                
+
                 result = { "message": { "role": message["role"],
                                         "content": message.get("content", "") } }
 
                 # Extract reasoning content if present
                 if "reasoning_content" in message: result["message"]["reasoning_content"] = message["reasoning_content"]
                 if "tool_calls" in message: result["message"]["tool_calls"] = message["tool_calls"]
-                
+
+                # Extract usage statistics if present
+                usage = data.get("usage")
+                if usage:
+                    result["usage"] = {
+                        "prompt_tokens": usage.get("prompt_tokens", 0),
+                        "completion_tokens": usage.get("completion_tokens", 0),
+                        "total_tokens": usage.get("total_tokens", 0)
+                    }
+
                 return result
 
             except Exception as e:

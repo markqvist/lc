@@ -4,7 +4,7 @@
 
 import RNS
 import json
-from typing import List, Dict, Any, Optional, Iterator, TYPE_CHECKING
+from typing import List, Dict, Any, Optional, Iterator, Callable, TYPE_CHECKING
 
 from lc.config import Config
 from lc.rendering import TTYRenderer
@@ -38,7 +38,12 @@ class Agent:
         # Just ensure we have the latest tools and model response
         tools = self._get_all_tools()
         response = self._call_model(tools)
-        
+
+        # Record token usage from response
+        usage = response.get("usage")
+        if usage:
+            self.session.record_turn_usage(usage)
+
         return self._process_response(response, checkpoint_callback=checkpoint_callback)
     
     def _get_all_tools(self) -> List[Dict[str, Any]]:

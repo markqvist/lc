@@ -124,12 +124,15 @@ class Session:
         # Tool and skill state
         self.tool_context: Dict[str, Any] = {}
         self.loaded_skills: List[str] = []
-        
+
         # Statistics
         self.turn_count = 0
-        self.token_count = 0
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.total_tokens = 0
         self.tool_call_count = 0
-        
+        self.turn_usage: List[Dict[str, Any]] = []
+
         # Track if this is a resumed session
         self._is_resumed = False
     
@@ -196,6 +199,33 @@ class Session:
     
     def _update_active_link(self) -> None:
         SessionManager.set_active_session(self.config, self.session_id)
+
+    def record_turn_usage(self, usage: Dict[str, Any]) -> None:
+        """Record token usage for a completed turn.
+
+        Args:
+            usage: Dict with 'prompt_tokens', 'completion_tokens', and 'total_tokens'
+        """
+        import time
+
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+
+        # Update cumulative counters
+        self.input_tokens += prompt_tokens
+        self.output_tokens += completion_tokens
+        self.total_tokens += total_tokens
+
+        # Record per-turn breakdown
+        turn_record = {
+            "turn": self.turn_count + 1,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "timestamp": time.time()
+        }
+        self.turn_usage.append(turn_record)
     
     def _initialize(self) -> None:
         self._load_skill_registry()
@@ -289,7 +319,7 @@ class Session:
         temp_file.rename(session_file)
     
     def _to_dict(self) -> Dict[str, Any]:
-        return { 
+        return {
             "version": self.SESSION_VERSION,
             "session_id": self.session_id,
             "name": self.session_name,
@@ -303,9 +333,12 @@ class Session:
             "loaded_skills": self.loaded_skills,
             "stats": {
                 "turn_count": self.turn_count,
-                "token_count": self.token_count,
+                "input_tokens": self.input_tokens,
+                "output_tokens": self.output_tokens,
+                "total_tokens": self.total_tokens,
                 "tool_call_count": self.tool_call_count,
-            } 
+                "turn_usage": self.turn_usage
+            }
         }
     
     @classmethod
@@ -320,12 +353,17 @@ class Session:
         
         stats = data.get("stats", {})
         session.turn_count = stats.get("turn_count", 0)
-        session.token_count = stats.get("token_count", 0)
         session.tool_call_count = stats.get("tool_call_count", 0)
-        
+
+        # Token usage (new fields, backward compatible)
+        session.input_tokens = stats.get("input_tokens", 0)
+        session.output_tokens = stats.get("output_tokens", 0)
+        session.total_tokens = stats.get("total_tokens", stats.get("token_count", 0))
+        session.turn_usage = stats.get("turn_usage", [])
+
         # Rebuild registry/system prompt if requested
         session._rebuild_for_resume(rebuild_system_prompt=rebuild_system_prompt)
-        
+
         return session
     
     def _display_resume_context(self) -> None:
@@ -340,8 +378,9 @@ class Session:
         # Metadata
         msg_count = len([m for m in self.conversation if m.get("role") in ("user", "assistant")])
         tool_count = self.tool_call_count
-        
-        print(f"  Messages: {msg_count} | Tools used: {tool_count} | Turns: {self.turn_count}")
+
+        token_info = f"Tokens: {self.total_tokens:,}" if self.total_tokens else "Tokens: -"
+        print(f"  Messages: {msg_count} | {token_info} | Tools: {tool_count} | Turns: {self.turn_count}")
         
         # Working directory warning
         current_dir = Path.cwd()
