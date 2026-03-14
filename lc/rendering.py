@@ -105,9 +105,20 @@ class TTYRenderer:
                 self.write(f"\n{self.GREEN}✓ Result:{self.RESET} ({modality} data)\n")
             return
         
-        display = f"{self.DIM}/{self.RESET}".join(result.splitlines())
-        if len(display) > 200: display = display[:197] + "…"
-        self.write(f"\n{self.GREEN}✓ Result: {self.RESET} {display}\n")
+        lsep = f"{self.DIM}\\{self.RESET}"
+        display = f"{lsep}".join(result.rstrip().splitlines())
+        limit = 384
+        if len(display) > limit:
+            display = f"{display[:limit-1]}"
+            found_non_printable = 0; pos = 0;
+            for char in reversed(display[-5:]):
+                pos += 1
+                if not char.isprintable() and char != '\n': found_non_printable = pos
+
+            if found_non_printable: display = display[:-pos]
+            display = f"{display}…"
+
+        self.write(f"\n{self.GREEN}✓ Result: {self.RESET} {display}{self.RESET}\n")
     
     def display_error(self, message: str) -> None:
         if not self._is_tty(): return
