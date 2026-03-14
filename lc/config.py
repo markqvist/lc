@@ -177,6 +177,7 @@ vision = boolean
 temperature = float
 max_tokens = integer
 context_limit = integer
+context_shift_factor = float
 
 [toolkits]
 builtin = list
@@ -223,6 +224,7 @@ vision = yes
 temperature = 0.7
 max_tokens = 32768
 context_limit = 200000
+context_shift_factor = 0.35
 
 [toolkits]
 # You can selectively enable built-in tools

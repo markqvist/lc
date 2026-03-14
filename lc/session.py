@@ -16,7 +16,7 @@ from lc.config import Config
 from lc.agent import Agent
 from lc.models.openai import OpenAIBackend
 from lc.models.mock import MockBackend
-from lc.context import ContextAnalyzer
+from lc.context import ContextAnalyzer, ContextShiftManager
 
 
 @dataclass
@@ -135,6 +135,9 @@ class Session:
         # Context analysis for token tracking
         self.context_analyzer: Optional[ContextAnalyzer] = None
 
+        # Context shift management
+        self.context_shift_manager: Optional[ContextShiftManager] = None
+
         # Track if this is a resumed session
         self._is_resumed = False
     
@@ -247,6 +250,9 @@ class Session:
 
         # Initialize context analyzer
         self.context_analyzer = ContextAnalyzer(self)
+
+        # Initialize context shift manager
+        self.context_shift_manager = ContextShiftManager(self)
     
     def _load_skill_registry(self) -> None:
         """Initialize skill registry with all skill directories."""
@@ -391,6 +397,9 @@ class Session:
             # Create fresh analyzer - will sync on next turn
             session.context_analyzer = ContextAnalyzer(session)
 
+        # Initialize context shift manager
+        session.context_shift_manager = ContextShiftManager(session)
+
         # Rebuild registry/system prompt if requested
         session._rebuild_for_resume(rebuild_system_prompt=rebuild_system_prompt)
 
@@ -499,6 +508,23 @@ class Session:
         elif backend_type == "openai":           return OpenAIBackend(model_config)
         else:                                    raise  ValueError(f"Unknown backend type: {backend_type}")
     
+    def _check_and_shift_context(self) -> tuple[bool, str]:
+        """Check if context shift is needed and perform if so.
+
+        Returns:
+            Tuple of (shift_occurred, message)
+        """
+        if self.context_shift_manager is None:
+            return False, ""
+
+        if self.context_analyzer is None:
+            return False, ""
+
+        # Estimate current tokens including new messages
+        estimated = self.context_analyzer.estimate_current_tokens(self.conversation)
+
+        return self.context_shift_manager.perform_shift()
+
     # Executes a single command
     def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty", stdin_context: Optional[str] = None) -> ExecutionResult:
         # If stdin context provided, add it as first user message
@@ -506,6 +532,12 @@ class Session:
 
         # Add the actual command
         self.conversation.append({"role": "user", "content": command})
+
+        # Check if context shift is needed before calling API
+        shifted, shift_msg = self._check_and_shift_context()
+        if shifted:
+            # Log the shift notification
+            RNS.log(f"Context shift performed: {shift_msg}", RNS.LOG_INFO)
 
         try:
             # Setup
