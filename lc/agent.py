@@ -4,7 +4,7 @@
 
 import RNS
 import json
-from typing import List, Dict, Any, Optional, Iterator, TYPE_CHECKING
+from typing import List, Dict, Any, Optional, Iterator, Callable, TYPE_CHECKING
 
 from lc.config import Config
 from lc.rendering import TTYRenderer
