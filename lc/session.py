@@ -1,5 +1,3 @@
-# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
-
 """Session management for lc."""
 
 import os
@@ -18,6 +16,7 @@ from lc.config import Config
 from lc.agent import Agent
 from lc.models.openai import OpenAIBackend
 from lc.models.mock import MockBackend
+from lc.context import ContextAnalyzer
 
 
 @dataclass
@@ -133,6 +132,9 @@ class Session:
         self.tool_call_count = 0
         self.turn_usage: List[Dict[str, Any]] = []
 
+        # Context analysis for token tracking
+        self.context_analyzer: Optional[ContextAnalyzer] = None
+
         # Track if this is a resumed session
         self._is_resumed = False
     
@@ -212,7 +214,7 @@ class Session:
         completion_tokens = usage.get("completion_tokens", 0)
         total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
 
-        # Record per-turn breakdown
+        # Record per-turn breakdown (legacy format for compatibility)
         turn_record = {
             "turn": self.turn_count + 1,
             "prompt_tokens": prompt_tokens,
@@ -232,11 +234,19 @@ class Session:
             # Use the API's total_tokens from the most recent turn
             # This is the accurate cumulative count (not input + output, which double-counts)
             self.total_tokens = self.turn_usage[-1].get("total_tokens", self.input_tokens + self.output_tokens)
+
+        # Also record detailed per-message breakdown via context analyzer
+        if self.context_analyzer is None:
+            self.context_analyzer = ContextAnalyzer(self)
+        self.context_analyzer.record_turn(usage, self.conversation.copy())
     
     def _initialize(self) -> None:
         self._load_skill_registry()
         self._build_system_prompt()
         self.conversation.append({"role": "system", "content": self.system_prompt})
+
+        # Initialize context analyzer
+        self.context_analyzer = ContextAnalyzer(self)
     
     def _load_skill_registry(self) -> None:
         """Initialize skill registry with all skill directories."""
@@ -325,7 +335,7 @@ class Session:
         temp_file.rename(session_file)
     
     def _to_dict(self) -> Dict[str, Any]:
-        return {
+        data = {
             "version": self.SESSION_VERSION,
             "session_id": self.session_id,
             "name": self.session_name,
@@ -346,6 +356,12 @@ class Session:
                 "turn_usage": self.turn_usage
             }
         }
+
+        # Include context analyzer data if available
+        if self.context_analyzer is not None:
+            data["context_analysis"] = self.context_analyzer.to_dict()
+
+        return data
     
     @classmethod
     def _from_dict(cls,  config: Config,  data: Dict[str, Any], rebuild_system_prompt: bool = False) -> "Session":
@@ -366,6 +382,14 @@ class Session:
         session.output_tokens = stats.get("output_tokens", 0)
         session.total_tokens = stats.get("total_tokens", stats.get("token_count", 0))
         session.turn_usage = stats.get("turn_usage", [])
+
+        # Restore context analyzer if available
+        context_analysis = data.get("context_analysis")
+        if context_analysis is not None:
+            session.context_analyzer = ContextAnalyzer.from_dict(session, context_analysis)
+        else:
+            # Create fresh analyzer - will sync on next turn
+            session.context_analyzer = ContextAnalyzer(session)
 
         # Rebuild registry/system prompt if requested
         session._rebuild_for_resume(rebuild_system_prompt=rebuild_system_prompt)
