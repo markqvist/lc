@@ -263,6 +263,34 @@ class ContextAnalyzer:
         RNS.log(f"ContextAnalyzer recalculated after shift: {total} tokens for {len(conversation)} messages", RNS.LOG_DEBUG)
         return total
 
+    def rebuild_indices_after_shift(self, removed_start: int, removed_end: int):
+        """Update indices in turn_breakdowns after messages removed."""
+        RNS.log(f"Rebuilding analyzer stats indices after context shift from {removed_start} to {removed_end}...", RNS.LOG_DEBUG)
+        removed_count = removed_end - removed_start
+        
+        for breakdown in self.turn_breakdowns:
+            new_message_tokens = []
+            for mt in breakdown.message_tokens:
+                # Message was removed - skip it
+                if removed_start <= mt.index < removed_end: continue
+                
+                # Shift index down
+                elif mt.index >= removed_end:
+                    new_message_tokens.append(MessageTokenInfo(
+                        role=mt.role,
+                        index=mt.index - removed_count,
+                        estimated_tokens=mt.estimated_tokens,
+                        is_estimated=mt.is_estimated
+                    ))
+                
+                # Before removal zone - keep as-is
+                else: new_message_tokens.append(mt)
+            
+            breakdown.message_tokens = new_message_tokens
+        
+        # Update tracking state
+        self._last_conversation_length -= removed_count
+
     def to_dict(self) -> List[Dict[str, Any]]:
         """Serialize turn breakdowns for persistence."""
         result = []
@@ -463,10 +491,8 @@ class ContextShiftManager:
             if accumulated >= target_tokens:
                 break
 
-        shifted_first_idx = end_idx
-
-        RNS.log(f"Context shift target at index {shifted_first_idx}, accumulated {accumulated} tokens, removing {removed_turns} turns", RNS.LOG_DEBUG)
-        return shifted_first_idx, accumulated, removed_turns
+        RNS.log(f"Context shift target at index {end_idx}, accumulated {accumulated} tokens, removing {removed_turns} turns", RNS.LOG_DEBUG)
+        return start_idx, end_idx, accumulated, removed_turns
 
     def _create_shift_notification(self, removed_messages: int, removed_tokens: int,
                                    removed_turns: int, backup_file: Optional[Path]) -> Dict[str, Any]:
@@ -535,19 +561,19 @@ class ContextShiftManager:
         backup_path = self._create_backup()
 
         # Find shift point
-        shifted_first_idx, removed_tokens, removed_turns = self._find_shift_point(target_remove)
+        start_idx, end_idx, removed_tokens, removed_turns = self._find_shift_point(target_remove)
 
-        if shifted_first_idx == 0:
+        if end_idx == 0:
             return False, "Cannot shift: unable to find valid shift point"
 
-        removed_messages = len(self.session.conversation) - shifted_first_idx
+        removed_messages = len(self.session.conversation) - end_idx
 
         if removed_messages <= 0:
             return False, "Cannot shift: no messages to remove"
 
         # Perform the shift
         new_conversation = [
-            self.session.conversation[0],  # System prompt
+            self.session.conversation[0],               # System prompt
             self.session.conversation[first_user_idx],  # First user message
         ]
 
@@ -558,11 +584,14 @@ class ContextShiftManager:
         new_conversation.append(notification)
 
         # Add remaining messages
-        new_conversation.extend(self.session.conversation[shifted_first_idx:])
+        new_conversation.extend(self.session.conversation[end_idx:])
 
         # Update conversation
         removed_count = len(self.session.conversation) - len(new_conversation) + 2  # +2 for kept messages
         self.session.conversation = new_conversation
+
+        # Rebuild analyzer indices
+        analyzer.rebuild_indices_after_shift(start_idx, end_idx)
 
         # Recalculate token estimate
         new_estimate = analyzer.recalculate_from_messages(self.session.conversation)

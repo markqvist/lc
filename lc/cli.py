@@ -497,7 +497,7 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
         
         if role == "system":
             token_count, is_est = message_token_map.get(i, (None, True))
-            token_str = f" ~{token_count}tk" if token_count else ""
+            token_str = f" ~{token_count} tokens" if token_count else ""
             add(f"### Message {msg_num}: System{token_str}")
             add()
             if content:
@@ -512,7 +512,7 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
         
         elif role == "user":
             token_count, is_est = message_token_map.get(i, (None, True))
-            token_str = f" ~{token_count}tk" if token_count else ""
+            token_str = f" ~{token_count} tokens" if token_count else ""
             # Handle multimodal content
             if isinstance(content, list):
                 add(f"### Message {msg_num}: User [Multimodal]{token_str}")
@@ -538,7 +538,7 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
         
         elif role == "assistant":
             token_count, is_est = message_token_map.get(i, (None, True))
-            token_str = f" ~{token_count}tk" if token_count else ""
+            token_str = f" ~{token_count} tokens" if token_count else ""
             if tool_calls:
                 add(f"### Message {msg_num}: Assistant [Tool Call{'s' if len(tool_calls) > 1 else ''}]{token_str}")
                 add()
@@ -584,7 +584,7 @@ def inspect_session(config: Config, session_ref: str, output_mode: str = "tty", 
         
         elif role == "tool":
             token_count, is_est = message_token_map.get(i, (None, True))
-            token_str = f" ~{token_count}tk" if token_count else ""
+            token_str = f" ~{token_count} tokens" if token_count else ""
             text = content or ""
             # Truncate long content in TTY mode
             if not is_pipe and not verbose and len(text) > 600:
