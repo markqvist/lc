@@ -22,7 +22,7 @@ documentation:
 	make -C docs html
 
 manual:
-	make -C docs latexpdf epub
+	make -C docs latexpdf
 
 build_spkg: remove_symlinks create_symlinks
 
