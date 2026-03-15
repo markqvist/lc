@@ -14,7 +14,7 @@ class Filesystem(Toolkit):
     gate_level = 0
     
     @tool(gate_level=0)
-    def read(self, path: str, from_line: int = 0, lines = 1000) -> str:
+    def read(self, path: str, from_line: int = 0, lines: int = 1000) -> str:
         """
         Read contents of a file.
         
