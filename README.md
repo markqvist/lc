@@ -33,6 +33,10 @@ Then you watch as the machine does the work. It plans. It executes. It reports. 
 
 If you want a bit more context, read [The Guide](./GUIDE.md) or [Chrome Horizons](./Chrome_Horizons.md).
 
+## What Is This?
+
+This, is a "`README`". It politely instruct you to read it. If you do, may learn things. You will roll your eyes, curl your toes a bit, and potentially laugh. Or cry. Or both. You do still know how to read, right?
+
 ## The Philosophy
 
 `lc` was born from a simple observation: Most agentic frameworks are bloated, opaque, and designed for cloud-scale Kubernetes deployments when what you actually need is to rename some files without reading seventeen man pages.
