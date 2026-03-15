@@ -35,7 +35,7 @@ If you want a bit more context, read [The Guide](./GUIDE.md) or [Chrome Horizons
 
 ## What Is This?
 
-This, is a "`README`". It politely instruct you to read it. If you do, may learn things. You *will* roll your eyes, curl your toes a bit, and potentially laugh. Or cry. Or both. You do still know how to read, right?
+This, is a "`README`". It politely instruct you to read it. If you do, you may learn things. You *will* roll your eyes, curl your toes a bit, and potentially laugh. Or cry. Or both. You do still know how to read, right?
 
 ## The Philosophy
 
@@ -59,7 +59,7 @@ Wanted to run an `IQ1_S` quant, and the logit gods decided `parted` was a better
 
 By using `lc`, you gain the full power, and bear the full responsibility for all the actions you delegate to the machine. No guard-rails, no guarantess, no restrictions.
 
-Also, don't assume any safety or security features actually work. At least half of it is still placeholders. I wrote this while drunk and riding a goat through the narrow streets of Venice. Someday, I might test everything, but that day is not today.
+I wrote this while drunk and riding a goat through the narrow streets of Venice. Someday, I might test everything, but that day is not today.
 
 ## License
 
@@ -118,11 +118,19 @@ pip install git+https://github.com/markqvist/lc
 Edit `~/.lc/config` to specify your model backend:
 
 ```ini
-[model]
-backend = openai
-base_url = http://localhost:1234/v1
-model = local-model
-api_key = not-needed-for-local
+[models]
+  default = primary
+
+  [[primary]]
+    backend = openai
+    base_url = http://localhost:1234/v1
+    model = local-model
+    sysprompt = system.jinja
+    vision = yes
+    temperature = 0.7
+    max_tokens = 32768
+    context_limit = 200000
+    context_shift_factor = 0.45
 
 [toolkits]
 builtin = filesystem, shell, cryptography
@@ -159,7 +167,7 @@ $ lc "Find all Python files modified in the last week and count lines of code"
 
 ### Interactive Mode
 
-```bash
+```txt
 $ lc -i
 lc> Read the README
 lc> Now summarize it in the style of a Victorian novel
@@ -168,7 +176,7 @@ lc> Actually, don't
 
 ### With "Safety" Gating
 
-```bash
+```txt
 # Gate at level 2 (command execution and above)
 $ lc --gate 2 "Delete all files in /tmp"
 ⚠ Gate level 2 (command execution)
@@ -230,7 +238,7 @@ LLMs have context windows. You may have noticed. When you feed them more tokens 
 
 **Configuration:**
 ```ini
-[model]
+[[primary-model]]
 context_limit = 128000       # Your model's context window
 context_shift_factor = 0.35  # Remove 35% when limit reached (0 disables shifting)
 ```
@@ -400,6 +408,8 @@ Found a bug? Have an improvement? Send me a patch over LXMF. No, I don't use Git
 
 ## Acknowledgments
 
+- To [ConfigObj](https://github.com/DiffSK/configobj) ([BSD 3 Clause License](./lc/CONFIGOBJ_LICENSE.txt))
+- To [Jinja2](https://github.com/pallets/jinja) ([BSD 3 Clause License](./lc/vendor/jinja2/LICENSE.txt))
 - To the open-source LLM community, for making local inference viable
 - To the reader, for getting this far without rolling their eyes too hard
 
