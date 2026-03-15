@@ -221,7 +221,7 @@ $ lc -r --rebuild
 
 Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not mine.
 
-### Context Management (Or: How I Learned to Stop Worrying and Love the KV-Cache)
+### Context Management
 
 LLMs have context windows. You may have noticed. When you feed them more tokens than their little silicon brains can handle, they don't gracefully page to disk like a proper operating system. They just break. Or hallucinate. Or start speaking in tongues.
 
