@@ -92,7 +92,7 @@ You can freely copy, share and distribute `lc` in binary or source form, as long
 
 ## Installation
 
-While the concept of `lc` had been playing pong in my head for some time, I have so far spent `<=` 3 days on this. Funny how it already works better than OpenClaw.
+While the concept of `lc` had been playing pong in my head for some time, I have so far spent `<=` 4 days on this. Funny how it already works better than, err.. That other framework.
 
 Things will change, rapidly. Data formats might break, arguments change. Your kitchen may disappear. If none of that scares you:
 
