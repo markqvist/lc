@@ -35,7 +35,7 @@ If you want a bit more context, read [The Guide](./GUIDE.md) or [Chrome Horizons
 
 ## What Is This?
 
-This, is a "`README`". It politely instruct you to read it. If you do, may learn things. You will roll your eyes, curl your toes a bit, and potentially laugh. Or cry. Or both. You do still know how to read, right?
+This, is a "`README`". It politely instruct you to read it. If you do, may learn things. You *will* roll your eyes, curl your toes a bit, and potentially laugh. Or cry. Or both. You do still know how to read, right?
 
 ## The Philosophy
 
