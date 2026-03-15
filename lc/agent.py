@@ -193,6 +193,8 @@ class Agent:
         gate_desc = self.GATE_DESCRIPTIONS.get(tool_gate, f"level {tool_gate}")        
         for key, value in arguments.items():
             value_str = str(value)
+            if len(value_str) > 60:
+                value_str = value_str[:57] + "..."
             value_str = value_str.replace('\n', '\\n')
             args_display.append(f"  {key}: {value_str}")
 

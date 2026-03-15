@@ -140,7 +140,10 @@ class Session:
             existing = cls.load(config, session_id, rebuild_system_prompt=rebuild_system_prompt)
             if existing: 
                 existing._is_resumed = True
-                existing.model_override = model_override
+                # CLI flag takes precedence over saved session model
+                # If CLI flag provided, update session for future resumptions
+                if model_override is not None:
+                    existing.model_override = model_override
                 return existing
 
             elif session_id: raise ValueError(f"Session not found: {session_id}")
@@ -304,6 +307,7 @@ class Session:
                  "conversation": self.conversation,
                  "tool_context": self.tool_context,
                  "loaded_skills": self.loaded_skills,
+                 "model_override": self.model_override,
                  "stats": { "turn_count": self.turn_count,
                             "input_tokens": self.input_tokens,
                             "output_tokens": self.output_tokens,
@@ -323,6 +327,7 @@ class Session:
         session.conversation = data.get("conversation", [])
         session.tool_context = data.get("tool_context", {})
         session.loaded_skills = data.get("loaded_skills", [])
+        session.model_override = data.get("model_override", None)
         
         stats = data.get("stats", {})
         session.turn_count = stats.get("turn_count", 0)
