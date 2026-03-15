@@ -19,6 +19,7 @@ package_data = {
 "": [
     "data/README.md",
     "data/GUIDE.md",
+    "data/CHRONICLES.md",
     "data/Chrome_Horizons.md",
     ]
 }

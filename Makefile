@@ -13,7 +13,7 @@ clean:
 	@echo Done
 
 assets:
-	cp README.md GUIDE.md Chrome_Horizons.md lc/data/
+	cp README.md GUIDE.md CHRONICLES.md Chrome_Horizons.md lc/data/
 
 build_wheel: assets
 	python3 setup.py bdist_wheel
