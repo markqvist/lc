@@ -244,7 +244,7 @@ The shift factor controls how aggressively we prune. Too low and you'll shift an
 - Inserts notification: "[Context shifted: removed N messages (~X tokens)...]"
 - Recalculates token estimates and continues
 
-Unlike certain other frameworks that shall remain nameless (but rhyme with "ShmopenClaw"), `lc` doesn't try to outsmart llama.cpp's native context handling. We manage *when* to shift, the inference server handles *how*. This means no mysterious compaction loops, no recursive self-destruction, no 3AM debugging sessions wondering why your agent suddenly forgot how to count. The KV-cache is recomputed only when actually necessary, not on *every*... *single*... *request*.
+Unlike certain other frameworks that shall remain nameless (but rhyme with "Token Saw"), `lc` doesn't try to outsmart llama.cpp's native context handling. We manage *when* to shift, the inference server handles *how*. This means no mysterious compaction loops, no recursive self-destruction, no 3AM debugging sessions wondering why your agent suddenly forgot how to count. The KV-cache is recomputed only when actually necessary, not on *every*... *single*... *request*.
 
 You'll see the shift notification in the conversation transcript. The model sees it too, so it knows context was lost. Your first user message is always preserved - continuity matters, even when memory doesn't.
 
