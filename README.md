@@ -144,6 +144,10 @@ Your job is done. Watch the chaos unfold. Or just go to sleep.
 
 You don't.
 
+## But.. It's not working!
+
+Update `llama.cpp`.
+
 ## Usage
 
 ### One-Shot Mode (Default)
