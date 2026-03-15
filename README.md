@@ -165,7 +165,7 @@ lc> Now summarize it in the style of a Victorian novel
 lc> Actually, don't
 ```
 
-### With Safety Gating
+### With "Safety" Gating
 
 ```bash
 # Gate at level 2 (command execution and above)
