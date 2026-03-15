@@ -1,7 +1,5 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
-"""Skill management for lc."""
-
 import re
 import RNS
 from pathlib import Path
@@ -9,8 +7,6 @@ from typing import Dict, List, Optional, Any
 
 
 class Skill:
-    """Represents a loaded skill."""
-    
     def __init__(self, path: Path, metadata: Dict[str, Any], content: str):
         self.path = path
         self.metadata = metadata
@@ -36,18 +32,9 @@ class Skill:
     @pinned.setter
     def pinned(self, value: bool) -> None:
         self.metadata['pinned'] = value
-    
-    def load_toolkit(self):
-        if self._toolkit is None:
-            # TODO: Import and instantiate toolkit from skill directory
-            pass
-        
-        return self._toolkit
 
 
-class SkillRegistry:
-    """Manages skill discovery and loading."""
-    
+class SkillRegistry:    
     FRONTMATTER_PATTERN = re.compile(r'^---\s*\n(.*?)\n---\s*\n', re.DOTALL)
     
     def __init__(self, skill_dirs: List[Path], pinned: Optional[List[str]] = None):
@@ -58,7 +45,6 @@ class SkillRegistry:
         self._apply_pinned_overrides()
     
     def _discover_skills(self) -> None:
-        """Discover all available skills."""
         for skill_dir in self.skill_dirs:
             if not skill_dir.exists(): continue
             
@@ -66,7 +52,6 @@ class SkillRegistry:
                 if skill_path.is_dir(): self._load_skill_metadata(skill_path)
     
     def _load_skill_metadata(self, path: Path) -> None:
-        """Load skill metadata and instantiate toolkit."""
         skill_md = path / "SKILL.md"
         if not skill_md.exists(): return
         
@@ -75,21 +60,16 @@ class SkillRegistry:
         
         skill = Skill(path, metadata, body)
         
-        # Load toolkit implementation if __init__.py exists
         init_py = path / "__init__.py"
-        if init_py.exists():
-            self._load_skill_toolkit(skill, init_py)
+        if init_py.exists(): self._load_skill_toolkit(skill, init_py)
         
         self.skills[skill.name] = skill
     
     def _parse_frontmatter(self, content: str) -> tuple:
-        """Parse YAML frontmatter from markdown content."""
-        match = self.FRONTMATTER_PATTERN.match(content)
-        
+        match = self.FRONTMATTER_PATTERN.match(content)        
         if not match: return {}, content
         
         # Simple YAML-like parsing
-        # TODO: Use proper YAML parser if needed
         frontmatter = match.group(1)
         body = content[match.end():]
         
@@ -110,7 +90,6 @@ class SkillRegistry:
         return metadata, body
     
     def _load_skill_toolkit(self, skill: Skill, init_py: Path) -> None:
-        """Load and instantiate skill toolkit from __init__.py."""
         import importlib.util
         import sys
         from lc.toolkit import Toolkit
@@ -153,27 +132,21 @@ class SkillRegistry:
 
         RNS.log(f"Skill toolkit from {skill_name} loaded", RNS.LOG_DEBUG)
     
-    def get_skill(self, name: str) -> Optional[Skill]:
-        """Get a skill by name."""
-        return self.skills.get(name)
+    def get_skill(self, name: str) -> Optional[Skill]: return self.skills.get(name)
     
     def get_all_signatures(self) -> Dict[str, Any]:
-        """Get all tool signatures from all skills (for KV-cache)."""
         signatures = {}
-        for skill in self.skills.values():
-            signatures.update(skill.tools)
+        for skill in self.skills.values(): signatures.update(skill.tools)
         return signatures
     
     def get_all_toolkits(self) -> Dict[str, Any]:
-        """Get all skill toolkit instances keyed by skill name."""
         toolkits = {}
         for name, skill in self.skills.items():
-            if skill._toolkit is not None:
-                toolkits[name] = skill._toolkit
+            if skill._toolkit is not None: toolkits[name] = skill._toolkit
+        
         return toolkits
     
     def find_by_trigger(self, text: str) -> List[Skill]:
-        """Find skills matching trigger keywords in text."""
         matching = []
         text_lower = text.lower()
         
@@ -186,15 +159,11 @@ class SkillRegistry:
         return matching
     
     def get_pinned_skills(self) -> List[Skill]:
-        """Get all pinned skills."""
         return [s for s in self.skills.values() if s.pinned]
     
     def _apply_pinned_overrides(self) -> None:
-        """Apply config-level pinned overrides to discovered skills."""
         for skill_name in self._pinned_override:
-            if skill_name in self.skills:
-                self.skills[skill_name].pinned = True
-            # Also try matching by skill directory name (case-insensitive)
+            if skill_name in self.skills: self.skills[skill_name].pinned = True
             else:
                 for name, skill in self.skills.items():
                     if name.lower() == skill_name.lower():

@@ -71,7 +71,6 @@ class ToolLoader:
         for toolkit_class in toolkit_classes:
             try:
                 toolkit = toolkit_class()
-                # Use class name as the toolkit identifier
                 self.toolkits[toolkit_class.__name__] = toolkit
 
             except Exception as e: raise RuntimeError(f"Failed to instantiate {toolkit_class.__name__}: {e}") from e

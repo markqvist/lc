@@ -1,7 +1,5 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
-"""Context management for lc sessions."""
-
 import os
 import RNS
 import shutil
@@ -15,7 +13,6 @@ if TYPE_CHECKING:
 
 @dataclass
 class MessageTokenInfo:
-    """Token information for a single message."""
     role: str
     index: int  # Index in conversation list
     estimated_tokens: int
@@ -24,7 +21,6 @@ class MessageTokenInfo:
 
 @dataclass
 class TurnTokenBreakdown:
-    """Token breakdown for a single turn."""
     turn: int
     prompt_tokens: int
     completion_tokens: int
@@ -34,8 +30,6 @@ class TurnTokenBreakdown:
 
 
 class ContextAnalyzer:
-    """Analyzes and tracks per-message token usage for context management."""
-
     # Conservative estimate: ~4 chars per token
     # This varies by content (code is denser, prose is lighter)
     CHARS_PER_TOKEN = 4.0
@@ -79,17 +73,16 @@ class ContextAnalyzer:
             char_counts = []
             for msg in new_messages:
                 content = msg.get("content", "")
-                if isinstance(content, str):
-                    char_counts.append(len(content))
+                if isinstance(content, str): char_counts.append(len(content))
+                
+                # Multimodal content - count text parts
                 elif isinstance(content, list):
-                    # Multimodal content - count text parts
                     total_chars = 0
                     for item in content:
-                        if item.get("type") == "text":
-                            total_chars += len(item.get("text", ""))
+                        if item.get("type") == "text": total_chars += len(item.get("text", ""))
                     char_counts.append(max(total_chars, 1))  # At least 1 char
-                else:
-                    char_counts.append(1)
+                
+                else: char_counts.append(1)
 
             total_chars = sum(char_counts)
 
@@ -99,18 +92,16 @@ class ContextAnalyzer:
                 if total_chars > 0:
                     ratio = chars / total_chars
                     estimated_tokens = int(token_delta * ratio)
-                else:
-                    estimated_tokens = max(1, token_delta // new_message_count)
+                
+                else: estimated_tokens = max(1, token_delta // new_message_count)
 
                 # Find the actual index in conversation
                 msg_index = len(conversation) - new_message_count + i
 
-                message_tokens.append(MessageTokenInfo(
-                    role=msg.get("role", "unknown"),
-                    index=msg_index,
-                    estimated_tokens=estimated_tokens,
-                    is_estimated=False  # Based on actual API data
-                ))
+                message_tokens.append(MessageTokenInfo(role=msg.get("role", "unknown"),
+                                                       index=msg_index,
+                                                       estimated_tokens=estimated_tokens,
+                                                       is_estimated=False)) # Based on actual API data 
         elif new_message_count > 0:
             # No token delta but new messages (edge case: zero tokens somehow)
             # Use character-based heuristic
@@ -118,34 +109,27 @@ class ContextAnalyzer:
             for i, msg in enumerate(new_messages):
                 msg_index = len(conversation) - new_message_count + i
                 estimated = self._estimate_message_tokens(msg)
-                message_tokens.append(MessageTokenInfo(
-                    role=msg.get("role", "unknown"),
-                    index=msg_index,
-                    estimated_tokens=estimated,
-                    is_estimated=True
-                ))
-
+                message_tokens.append(MessageTokenInfo(role=msg.get("role", "unknown"),
+                                                       index=msg_index,
+                                                       estimated_tokens=estimated,
+                                                       is_estimated=True))
         # Handle the completion/assistant message
         if completion_tokens > 0:
             # Find the last assistant message
             for i in range(len(conversation) - 1, -1, -1):
                 if conversation[i].get("role") == "assistant":
-                    message_tokens.append(MessageTokenInfo(
-                        role="assistant",
-                        index=i,
-                        estimated_tokens=completion_tokens,
-                        is_estimated=False
-                    ))
+                    message_tokens.append(MessageTokenInfo(role="assistant",
+                                                           index=i,
+                                                           estimated_tokens=completion_tokens,
+                                                           is_estimated=False))
                     break
 
-        breakdown = TurnTokenBreakdown(
-            turn=self.session.turn_count + 1,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            total_tokens=total_tokens,
-            timestamp=time.time(),
-            message_tokens=message_tokens
-        )
+        breakdown = TurnTokenBreakdown(turn=self.session.turn_count + 1,
+                                       prompt_tokens=prompt_tokens,
+                                       completion_tokens=completion_tokens,
+                                       total_tokens=total_tokens,
+                                       timestamp=time.time(),
+                                       message_tokens=message_tokens)
 
         self.turn_breakdowns.append(breakdown)
 
@@ -161,25 +145,22 @@ class ContextAnalyzer:
         return breakdown
 
     def _estimate_message_tokens(self, message: Dict[str, Any]) -> int:
-        """Estimate token count for a single message using character heuristic."""
         content = message.get("content", "")
         role = message.get("role", "unknown")
 
-        if isinstance(content, str):
-            char_count = len(content)
+        if isinstance(content, str): char_count = len(content)
+        
+        # Multimodal - count text parts, add estimate for image overhead
         elif isinstance(content, list):
-            # Multimodal - count text parts, add estimate for image overhead
             char_count = 0
             image_count = 0
             for item in content:
-                if item.get("type") == "text":
-                    char_count += len(item.get("text", ""))
-                elif item.get("type") == "image_url":
-                    image_count += 1
+                if item.get("type") == "text":        char_count += len(item.get("text", ""))
+                elif item.get("type") == "image_url": image_count += 1
             # Add token estimate for image (typically ~200-500 tokens depending on model)
             char_count += image_count * 300
-        else:
-            char_count = 0
+        
+        else: char_count = 0
 
         # Add overhead for message structure (role, etc.)
         overhead = 10
@@ -201,8 +182,9 @@ class ContextAnalyzer:
         Returns:
             Estimated total token count
         """
+
+        # No history - use pure heuristic
         if not self.turn_breakdowns:
-            # No history - use pure heuristic
             total = sum(self._estimate_message_tokens(msg) for msg in conversation)
             RNS.log(f"ContextAnalyzer estimated total (no history): {total} tokens for {len(conversation)} messages", RNS.LOG_DEBUG)
             return total
@@ -218,8 +200,8 @@ class ContextAnalyzer:
             estimated_new = sum(self._estimate_message_tokens(msg) for msg in new_messages)
             total += estimated_new
             RNS.log(f"ContextAnalyzer estimated total: {last_breakdown.prompt_tokens} (known) + {estimated_new} ({new_count} new) = {total} tokens", RNS.LOG_DEBUG)
-        else:
-            RNS.log(f"ContextAnalyzer estimated total: {total} tokens (no new messages)", RNS.LOG_DEBUG)
+        
+        else: RNS.log(f"ContextAnalyzer estimated total: {total} tokens (no new messages)", RNS.LOG_DEBUG)
 
         return total
 
@@ -231,12 +213,10 @@ class ContextAnalyzer:
         # Search through turn breakdowns
         for breakdown in self.turn_breakdowns:
             for msg_info in breakdown.message_tokens:
-                if msg_info.index == conversation_index:
-                    return msg_info.estimated_tokens
+                if msg_info.index == conversation_index: return msg_info.estimated_tokens
 
         # Not tracked - estimate from current conversation
-        if 0 <= conversation_index < len(self.session.conversation):
-            return self._estimate_message_tokens(self.session.conversation[conversation_index])
+        if 0 <= conversation_index < len(self.session.conversation): return self._estimate_message_tokens(self.session.conversation[conversation_index])
 
         return 0
 
@@ -253,18 +233,15 @@ class ContextAnalyzer:
         """
         total = 0
         for i, msg in enumerate(conversation):
-            # Try to get tracked count first
             count = self.get_message_token_count(i)
-            if count == 0:
-                # Fall back to heuristic
-                count = self._estimate_message_tokens(msg)
+            if count == 0: count = self._estimate_message_tokens(msg)
             total += count
 
         RNS.log(f"ContextAnalyzer recalculated after shift: {total} tokens for {len(conversation)} messages", RNS.LOG_DEBUG)
         return total
 
     def rebuild_indices_after_shift(self, removed_start: int, removed_end: int):
-        """Update indices in turn_breakdowns after messages removed."""
+        """Update indices in turn_breakdowns after removing messages."""
         RNS.log(f"Rebuilding analyzer stats indices after context shift from {removed_start} to {removed_end}...", RNS.LOG_DEBUG)
         removed_count = removed_end - removed_start
         
@@ -276,65 +253,47 @@ class ContextAnalyzer:
                 
                 # Shift index down
                 elif mt.index >= removed_end:
-                    new_message_tokens.append(MessageTokenInfo(
-                        role=mt.role,
-                        index=mt.index - removed_count,
-                        estimated_tokens=mt.estimated_tokens,
-                        is_estimated=mt.is_estimated
-                    ))
+                    new_message_tokens.append(MessageTokenInfo(role=mt.role,
+                                                               index=mt.index - removed_count,
+                                                               estimated_tokens=mt.estimated_tokens,
+                                                               is_estimated=mt.is_estimated))
                 
                 # Before removal zone - keep as-is
                 else: new_message_tokens.append(mt)
             
             breakdown.message_tokens = new_message_tokens
-        
-        # Update tracking state
+
         self._last_conversation_length -= removed_count
 
     def to_dict(self) -> List[Dict[str, Any]]:
-        """Serialize turn breakdowns for persistence."""
         result = []
         for bd in self.turn_breakdowns:
-            result.append({
-                "turn": bd.turn,
-                "prompt_tokens": bd.prompt_tokens,
-                "completion_tokens": bd.completion_tokens,
-                "total_tokens": bd.total_tokens,
-                "timestamp": bd.timestamp,
-                "message_tokens": [
-                    {
-                        "role": mt.role,
-                        "index": mt.index,
-                        "estimated_tokens": mt.estimated_tokens,
-                        "is_estimated": mt.is_estimated
-                    }
-                    for mt in bd.message_tokens
-                ]
-            })
+            result.append( {"turn": bd.turn,
+                            "prompt_tokens": bd.prompt_tokens,
+                            "completion_tokens": bd.completion_tokens,
+                            "total_tokens": bd.total_tokens,
+                            "timestamp": bd.timestamp,
+                            "message_tokens": [ {"role": mt.role,
+                                                 "index": mt.index,
+                                                 "estimated_tokens": mt.estimated_tokens,
+                                                 "is_estimated": mt.is_estimated}
+                                                 for mt in bd.message_tokens ] })
         return result
 
     @classmethod
     def from_dict(cls, session: "Session", data: List[Dict[str, Any]]) -> "ContextAnalyzer":
-        """Deserialize turn breakdowns."""
         analyzer = cls(session)
-
         for item in data:
-            breakdown = TurnTokenBreakdown(
-                turn=item.get("turn", 0),
-                prompt_tokens=item.get("prompt_tokens", 0),
-                completion_tokens=item.get("completion_tokens", 0),
-                total_tokens=item.get("total_tokens", 0),
-                timestamp=item.get("timestamp", 0),
-                message_tokens=[
-                    MessageTokenInfo(
-                        role=mt.get("role", "unknown"),
-                        index=mt.get("index", 0),
-                        estimated_tokens=mt.get("estimated_tokens", 0),
-                        is_estimated=mt.get("is_estimated", True)
-                    )
-                    for mt in item.get("message_tokens", [])
-                ]
-            )
+            breakdown = TurnTokenBreakdown(turn=item.get("turn", 0),
+                                           prompt_tokens=item.get("prompt_tokens", 0),
+                                           completion_tokens=item.get("completion_tokens", 0),
+                                           total_tokens=item.get("total_tokens", 0),
+                                           timestamp=item.get("timestamp", 0),
+                                           message_tokens=[ MessageTokenInfo(role=mt.get("role", "unknown"),
+                                                                             index=mt.get("index", 0),
+                                                                             estimated_tokens=mt.get("estimated_tokens", 0),
+                                                                             is_estimated=mt.get("is_estimated", True))
+                                                            for mt in item.get("message_tokens", []) ])
             analyzer.turn_breakdowns.append(breakdown)
 
         # Restore tracking state from last breakdown
@@ -346,15 +305,13 @@ class ContextAnalyzer:
             analyzer._last_conversation_length = 0  # Will be set correctly on next record
             RNS.log(f"ContextAnalyzer restored from dict: {len(analyzer.turn_breakdowns)} turns, "
                     f"last_prompt={analyzer._last_prompt_tokens}", RNS.LOG_DEBUG)
-        else:
-            RNS.log("ContextAnalyzer restored from dict: no turn data", RNS.LOG_DEBUG)
+        
+        else: RNS.log("ContextAnalyzer restored from dict: no turn data", RNS.LOG_DEBUG)
 
         return analyzer
 
 
 class ContextShiftManager:
-    """Manages context shifting for long sessions."""
-
     # TODO: Future enhancement - guarantee last N messages are preserved
     # regardless of token count, for continuity of recent context
 
@@ -366,57 +323,31 @@ class ContextShiftManager:
         self.cumulative_removed_turns = 0
 
     def _get_config(self) -> tuple[int, float]:
-        """Get context limit and shift factor from config.
-
-        Returns:
-            Tuple of (context_limit, shift_factor)
-        """
         context_limit = self.session.config.model.get("context_limit", 128000)
         shift_factor = self.session.config.model.get("context_shift_factor", 0.35)
         return context_limit, shift_factor
 
     def should_shift(self, estimated_tokens: int) -> bool:
-        """Check if context shift is needed.
-
-        Args:
-            estimated_tokens: Estimated current token count
-
-        Returns:
-            True if shift should be performed
-        """
         context_limit, shift_factor = self._get_config()
 
         # shift_factor = 0 disables context shifting
-        if shift_factor <= 0:
-            return False
+        if shift_factor <= 0: return False
 
         return estimated_tokens >= context_limit
 
     def _find_backup_path(self) -> Optional[Path]:
-        """Find next available backup file path.
-
-        Returns:
-            Path for backup file, or None if session not persisted
-        """
         sessions_dir = self.session.config.path / "sessions"
-        if not sessions_dir.exists():
-            return None
+        if not sessions_dir.exists(): return None
 
         base_name = f"{self.session.session_id}.msgpack"
         counter = 1
 
         while True:
             backup_path = sessions_dir / f"{base_name}.{counter}"
-            if not backup_path.exists():
-                return backup_path
+            if not backup_path.exists(): return backup_path
             counter += 1
 
     def _create_backup(self) -> Optional[Path]:
-        """Create backup of current session file.
-
-        Returns:
-            Path to backup file, or None if backup not created
-        """
         sessions_dir = self.session.config.path / "sessions"
         session_file = sessions_dir / f"{self.session.session_id}.msgpack"
 
@@ -425,32 +356,23 @@ class ContextShiftManager:
             return None
 
         backup_path = self._find_backup_path()
-        if backup_path is None:
-            return None
+        if backup_path is None: return None
 
         try:
             shutil.copy2(session_file, backup_path)
             RNS.log(f"ContextShiftManager: Session backed up to {backup_path.name}", RNS.LOG_DEBUG)
             return backup_path
+        
         except Exception as e:
             RNS.log(f"ContextShiftManager: Failed to create backup: {e}", RNS.LOG_ERROR)
             return None
 
     def _find_shift_point(self, target_tokens: int) -> tuple[int, int, int]:
-        """Find the index to shift at, preserving system and first user message.
-
-        Args:
-            target_tokens: Number of tokens to remove
-
-        Returns:
-            Tuple of (start_index, removed_tokens, removed_turns)
-            start_index is the first message to remove (after first user message)
-        """
+        """Find the index to shift at, preserving system and first user message."""
         RNS.log("Finding context shift point target...", RNS.LOG_DEBUG)
         conversation = self.session.conversation
 
-        if not conversation:
-            return 0, 0, 0
+        if not conversation: return 0, 0, 0
 
         # Find first user message index
         first_user_idx = None
@@ -459,9 +381,8 @@ class ContextShiftManager:
                 first_user_idx = i
                 break
 
-        if first_user_idx is None:
-            # No user message found - can't shift meaningfully
-            return 0, 0, 0
+        # No user message found - can't shift meaningfully
+        if first_user_idx is None: return 0, 0, 0
 
         # Start removing after first user message
         start_idx = first_user_idx + 1
@@ -491,25 +412,14 @@ class ContextShiftManager:
             accumulated += token_count
             end_idx = i + 1
 
-            if accumulated >= target_tokens:
-                break
+            if accumulated >= target_tokens: break
 
         RNS.log(f"Context shift target at index {end_idx}, accumulated {accumulated} tokens, removing {removed_turns} turns", RNS.LOG_DEBUG)
         return start_idx, end_idx, accumulated, removed_turns
 
     def _create_shift_notification(self, removed_messages: int, removed_tokens: int,
                                    removed_turns: int, backup_file: Optional[Path]) -> Dict[str, Any]:
-        """Create the context shift notification message.
 
-        Args:
-            removed_messages: Number of messages removed this shift
-            removed_tokens: Approximate tokens removed this shift
-            removed_turns: Number of prior turns removed this shift
-            backup_file: Path to backup file (if created)
-
-        Returns:
-            User message dict with notification content
-        """
         backup_info = f" Original session preserved in {backup_file.name}." if backup_file else ""
 
         # Include cumulative stats if this isn't the first shift
@@ -518,33 +428,23 @@ class ContextShiftManager:
             total_tokens = self.cumulative_removed_tokens + removed_tokens
             total_turns = self.cumulative_removed_turns + removed_turns
             
-            content = (
-                f"[Context shifted: removed {removed_messages} messages with ~{removed_tokens:,} tokens "
-                f"this shift, {total_messages} messages with ~{total_tokens:,} tokens total, "
-                f"{removed_turns} turns condensed this shift, {total_turns} total.{backup_info}]"
-            )
+            content = (f"[Context shifted: removed {removed_messages} messages with ~{removed_tokens:,} tokens "
+                       f"this shift, {total_messages} messages with ~{total_tokens:,} tokens total, "
+                       f"{removed_turns} turns condensed this shift, {total_turns} total.{backup_info}]")
+        
         else:
-            content = (
-                f"[Context shifted: removed {removed_messages} messages (~{removed_tokens:,} tokens), "
-                f"{removed_turns} prior turns condensed.{backup_info}]"
-            )
+            content = (f"[Context shifted: removed {removed_messages} messages (~{removed_tokens:,} tokens), "
+                       f"{removed_turns} prior turns condensed.{backup_info}]")
 
         return {"role": "user", "content": content}
 
     def perform_shift(self) -> tuple[bool, str]:
-        """Perform context shift if needed.
-
-        Returns:
-            Tuple of (shift_occurred, message)
-        """
-        # Check if shift is needed
         analyzer = self.session.context_analyzer
         if not analyzer:
             RNS.log("ContextShiftManager: No analyzer available", RNS.LOG_WARNING)
             return False, "No context analyzer available"
 
         estimated_tokens = analyzer.estimate_current_tokens(self.session.conversation)
-
         if not self.should_shift(estimated_tokens): return False, ""
 
         context_limit, shift_factor = self._get_config()
@@ -586,10 +486,8 @@ class ContextShiftManager:
         self.cumulative_removed_turns += removed_turns
 
         # Perform the shift
-        new_conversation = [
-            self.session.conversation[0],               # System prompt
-            self.session.conversation[first_user_idx],  # First user message
-        ]
+        new_conversation = [ self.session.conversation[0],               # System prompt
+                             self.session.conversation[first_user_idx] ] # First user message
 
         # Add shift notification
         notification = self._create_shift_notification(removed_messages, removed_tokens, removed_turns, backup_path)

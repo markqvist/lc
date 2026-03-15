@@ -15,14 +15,14 @@ class Context:
         self.session = session
         self.config = config
     
+    # TODO: Implement cross-toolkit calls
     def call_tool(self, toolkit: str, tool: str, arguments: Dict[str, Any]) -> str:
         """Call another tool programmatically."""
-        # TODO: Implement cross-toolkit calls
         return ""
     
+    # TODO: Implement skill documentation access
     def get_skill_doc(self, skill_name: str) -> Optional[str]:
         """Get documentation for a skill."""
-        # TODO: Implement skill documentation access
         return None
 
 
@@ -111,8 +111,6 @@ class Toolkit(ABC):
                      list: {"type": "array"},
                      dict: {"type": "object"} }
         
-        # if isinstance(param_type, type) and issubclass(param_type, BaseModel): return param_type.model_json_schema()
-        
         # Handle List[X] and Optional[X]
         origin = getattr(param_type, '__origin__', None)
         if origin is not None:
@@ -129,7 +127,6 @@ class Toolkit(ABC):
     
     @property
     def tools(self) -> Dict[str, Dict[str, Any]]:
-        """Get all tool schemas for this toolkit."""
         return {
             f"{self.__class__.__name__}.{name}": {
                 "name": f"{self.__class__.__name__}.{name}",
@@ -142,7 +139,6 @@ class Toolkit(ABC):
         }
     
     def get_modality(self, tool_name: str) -> str:
-        """Get the modality for a specific tool."""
         if '.' in tool_name:
             _, tool_name = tool_name.rsplit('.', 1)
         return self._modalities.get(tool_name, "text")

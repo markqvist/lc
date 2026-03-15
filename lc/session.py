@@ -1,6 +1,7 @@
-"""Session management for lc."""
+# Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
 import os
+import sys
 import RNS
 import uuid
 import time
@@ -21,7 +22,6 @@ from lc.context import ContextAnalyzer, ContextShiftManager
 
 @dataclass
 class ExecutionResult:
-    """Result of command execution."""
     success: bool
     output: str = ""
     error: Optional[str] = None
@@ -29,14 +29,10 @@ class ExecutionResult:
 
 
 class SessionManager:
-    """Manages session discovery and listing."""
-    
     @classmethod
     def list_sessions(cls, config: Config) -> List[Dict[str, Any]]:
-        """List all available sessions with metadata."""
         sessions_dir = config.path / "sessions"
-        if not sessions_dir.exists():
-            return []
+        if not sessions_dir.exists(): return []
         
         sessions = []
         for session_file in sessions_dir.glob("*.msgpack"):
@@ -48,7 +44,6 @@ class SessionManager:
             # Skip corrupted session files
             except Exception: continue
         
-        # Sort by updated_at descending (most recent first)
         sessions.sort(key=lambda s: s.get("updated_at", 0), reverse=True)
         return sessions
     
@@ -66,37 +61,28 @@ class SessionManager:
     def get_active_session(cls, config: Config) -> Optional[Path]:
         active_link = config.path / "sessions" / "active"
         if active_link.exists():
-            # Valid symlink, follow
             target = active_link.resolve()
-            if target.exists(): return target
-            
-            # Broken symlink, remove it
+            if target.exists(): return target            
             else: active_link.unlink()
 
         return None
     
     @classmethod
     def set_active_session(cls, config: Config, session_id: str) -> None:
-        """Update the active session symlink."""
         RNS.log(f"Updating active session symlink to {session_id}", RNS.LOG_DEBUG) # TODO: Clean initial debug logging
 
         sessions_dir = config.path / "sessions"
         active_link = sessions_dir / "active"
         session_file = sessions_dir / f"{session_id}.msgpack"
         
-        if not session_file.exists(): return
-        
-        # Remove existing symlink if present
+        if not session_file.exists(): return        
         if active_link.exists() or active_link.is_symlink(): active_link.unlink()
         
-        # Create new symlink (relative path)
         try: active_link.symlink_to(session_file.name)
         except Exception as e: RNS.log(f"Could not update active session symlink: {e}", RNS.LOG_ERROR)
 
 
-class Session:
-    """Manages agent session state and execution flow."""
-    
+class Session:    
     SESSION_VERSION          = 1
     CONTEXT_PREVIEW_MESSAGES = 4 # Number of recent messages to show on resume
     
@@ -109,22 +95,16 @@ class Session:
         self.working_dir = Path.cwd()
         self.jinja = jinja2.Environment(undefined=jinja2.Undefined)
 
-        # Agent identity
         if not os.path.isfile(self.config.identity_path):
             new_identity = RNS.Identity()
             new_identity.to_file(self.config.identity_path)
 
         self.identity = RNS.Identity.from_file(self.config.identity_path)
-        
-        # Conversation state
         self.conversation: List[Dict[str, Any]] = []
         self.system_prompt: str = ""
-        
-        # Tool and skill state
         self.tool_context: Dict[str, Any] = {}
         self.loaded_skills: List[str] = []
 
-        # Statistics
         self.turn_count = 0
         self.input_tokens = 0
         self.output_tokens = 0
@@ -132,13 +112,8 @@ class Session:
         self.tool_call_count = 0
         self.turn_usage: List[Dict[str, Any]] = []
 
-        # Context analysis for token tracking
         self.context_analyzer: Optional[ContextAnalyzer] = None
-
-        # Context shift management
         self.context_shift_manager: Optional[ContextShiftManager] = None
-
-        # Track if this is a resumed session
         self._is_resumed = False
     
     @classmethod
@@ -163,8 +138,7 @@ class Session:
             if existing: 
                 existing._is_resumed = True
                 return existing
-            
-            # Specific session requested but not found - error
+
             elif session_id: raise ValueError(f"Session not found: {session_id}")
         
         return cls.create(config, session_name=session_name)
@@ -174,10 +148,7 @@ class Session:
         sessions_dir = config.path / "sessions"
         
         if session_id:
-            # Try as UUID first
             session_file = sessions_dir / f"{session_id}.msgpack"
-            
-            # If not found, try as name
             if not session_file.exists():
                 named_file = SessionManager.find_session_by_name(config, session_id)
                 if named_file: session_file = named_file
@@ -202,29 +173,21 @@ class Session:
 
         except Exception: return None
     
-    def _update_active_link(self) -> None:
-        SessionManager.set_active_session(self.config, self.session_id)
+    def _update_active_link(self) -> None: SessionManager.set_active_session(self.config, self.session_id)
 
     def record_turn_usage(self, usage: Dict[str, Any]) -> None:
-        """Record token usage for a completed turn.
-
-        Args:
-            usage: Dict with 'prompt_tokens', 'completion_tokens', and 'total_tokens'
-        """
         import time
 
         prompt_tokens = usage.get("prompt_tokens", 0)
         completion_tokens = usage.get("completion_tokens", 0)
         total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
 
-        # Record per-turn breakdown (legacy format for compatibility)
-        turn_record = {
-            "turn": self.turn_count + 1,
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens": total_tokens,
-            "timestamp": time.time()
-        }
+        turn_record = { "turn": self.turn_count + 1,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": total_tokens,
+                        "timestamp": time.time() }
+        
         self.turn_usage.append(turn_record)
 
         # Cumulative totals:
@@ -239,23 +202,17 @@ class Session:
             self.total_tokens = self.turn_usage[-1].get("total_tokens", self.input_tokens + self.output_tokens)
 
         # Also record detailed per-message breakdown via context analyzer
-        if self.context_analyzer is None:
-            self.context_analyzer = ContextAnalyzer(self)
+        if self.context_analyzer is None: self.context_analyzer = ContextAnalyzer(self)
         self.context_analyzer.record_turn(usage, self.conversation.copy())
     
     def _initialize(self) -> None:
         self._load_skill_registry()
         self._build_system_prompt()
         self.conversation.append({"role": "system", "content": self.system_prompt})
-
-        # Initialize context analyzer
         self.context_analyzer = ContextAnalyzer(self)
-
-        # Initialize context shift manager
         self.context_shift_manager = ContextShiftManager(self)
     
     def _load_skill_registry(self) -> None:
-        """Initialize skill registry with all skill directories."""
         from lc.skills import SkillRegistry
         from pathlib import Path
         
@@ -301,28 +258,19 @@ class Session:
             except Exception as e:
                 print(f"An error occurred while resolving variables from {resolver_class}. This resolver was skipped.")
                 RNS.trace_exception(e)
-        
-        # Build system prompt
+
         sysprompt_key = self.config.model["sysprompt"].replace(".jinja", "")
         if not sysprompt_key in resolved_context["templates"]: raise KeyError("System prompt template \"{sysprompt}.jinja\" not resolvable")
         else:
             system_template    = self.jinja.from_string(resolved_context["templates"][sysprompt_key])
             self.system_prompt = system_template.render(**resolved_context)
-
             # RNS.log(f"SYSTEM PROMPT RESOLVED:\n{self.system_prompt}")
     
     def _rebuild_for_resume(self, rebuild_system_prompt: bool = False) -> None:
-        """
-        Rebuild session state after loading from disk.
-        Optionally rebuilds the system prompt to maintain KV-cache validity.
-        """
-        
         self._load_skill_registry()
         
-        # Optionally rebuild system prompt
         if rebuild_system_prompt:
             self._build_system_prompt()
-
             if self.conversation and self.conversation[0].get("role") == "system": self.conversation[0]["content"] = self.system_prompt
             else: self.conversation.insert(0, {"role": "system", "content": self.system_prompt})
 
@@ -341,32 +289,25 @@ class Session:
         temp_file.rename(session_file)
     
     def _to_dict(self) -> Dict[str, Any]:
-        data = {
-            "version": self.SESSION_VERSION,
-            "session_id": self.session_id,
-            "name": self.session_name,
-            "created_at": self.created_at,
-            "updated_at": time.time(),
-            "config_path": str(self.config.path),
-            "config_snapshot": {},  # TODO: Include relevant config
-            "working_dir": str(self.working_dir),
-            "conversation": self.conversation,
-            "tool_context": self.tool_context,
-            "loaded_skills": self.loaded_skills,
-            "stats": {
-                "turn_count": self.turn_count,
-                "input_tokens": self.input_tokens,
-                "output_tokens": self.output_tokens,
-                "total_tokens": self.total_tokens,
-                "tool_call_count": self.tool_call_count,
-                "turn_usage": self.turn_usage
-            }
-        }
+        data = { "version": self.SESSION_VERSION,
+                 "session_id": self.session_id,
+                 "name": self.session_name,
+                 "created_at": self.created_at,
+                 "updated_at": time.time(),
+                 "config_path": str(self.config.path),
+                 "config_snapshot": {},  # TODO: Include relevant config
+                 "working_dir": str(self.working_dir),
+                 "conversation": self.conversation,
+                 "tool_context": self.tool_context,
+                 "loaded_skills": self.loaded_skills,
+                 "stats": { "turn_count": self.turn_count,
+                            "input_tokens": self.input_tokens,
+                            "output_tokens": self.output_tokens,
+                            "total_tokens": self.total_tokens,
+                            "tool_call_count": self.tool_call_count,
+                            "turn_usage": self.turn_usage } }
 
-        # Include context analyzer data if available
-        if self.context_analyzer is not None:
-            data["context_analysis"] = self.context_analyzer.to_dict()
-
+        if self.context_analyzer is not None: data["context_analysis"] = self.context_analyzer.to_dict()
         return data
     
     @classmethod
@@ -391,11 +332,10 @@ class Session:
 
         # Restore context analyzer if available
         context_analysis = data.get("context_analysis")
-        if context_analysis is not None:
-            session.context_analyzer = ContextAnalyzer.from_dict(session, context_analysis)
-        else:
-            # Create fresh analyzer - will sync on next turn
-            session.context_analyzer = ContextAnalyzer(session)
+        if context_analysis is not None: session.context_analyzer = ContextAnalyzer.from_dict(session, context_analysis)
+        
+        # Create fresh analyzer - will sync on next turn
+        else: session.context_analyzer = ContextAnalyzer(session)
 
         # Initialize context shift manager
         session.context_shift_manager = ContextShiftManager(session)
@@ -406,7 +346,6 @@ class Session:
         return session
     
     def _display_resume_context(self) -> None:
-        """Display session metadata and recent context on resume."""
         import shutil
         
         # Header
@@ -509,42 +448,23 @@ class Session:
         else:                                    raise  ValueError(f"Unknown backend type: {backend_type}")
     
     def _check_and_shift_context(self) -> tuple[bool, str]:
-        """Check if context shift is needed and perform if so.
+        if self.context_shift_manager is None: return False, ""
+        if self.context_analyzer is None: return False, ""
 
-        Returns:
-            Tuple of (shift_occurred, message)
-        """
-        if self.context_shift_manager is None:
-            return False, ""
-
-        if self.context_analyzer is None:
-            return False, ""
-
-        # Estimate current tokens including new messages
         estimated = self.context_analyzer.estimate_current_tokens(self.conversation)
-
         return self.context_shift_manager.perform_shift()
 
-    # Executes a single command
     def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty", stdin_context: Optional[str] = None) -> ExecutionResult:
-        # If stdin context provided, add it as first user message
         if stdin_context: self.conversation.append({"role": "user", "content": f"[Received via stdin]:\n{stdin_context}"})
-
-        # Add the actual command
         self.conversation.append({"role": "user", "content": command})
 
-        # Check if context shift is needed before calling API
         shifted, shift_msg = self._check_and_shift_context()
-        if shifted:
-            # Log the shift notification
-            RNS.log(f"Context shift performed: {shift_msg}", RNS.LOG_INFO)
+        if shifted: RNS.log(f"Context shift performed: {shift_msg}", RNS.LOG_INFO)
 
         try:
-            # Setup
             model_backend = self._create_model_backend()
             toolkits = self._load_toolkits()
 
-            # Create agent and run turn
             agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt, output_mode=output_mode)
             output = agent.run_turn(command, checkpoint_callback=self.save)
 
@@ -556,9 +476,6 @@ class Session:
         except Exception as e: return ExecutionResult(success=False, error=str(e))
     
     def run_interactive(self, gate_level: Optional[int] = None, can_prompt: bool = True, output_mode: str = "tty") -> int:
-        import sys
-
-        # Display resume context if this is a resumed session
         if self._is_resumed: self._display_resume_context()
 
         print(f"lc {self.get_version()} - Interactive Mode")
