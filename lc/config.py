@@ -56,7 +56,6 @@ class Config:
             if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]          = "system.jinja"
             if not data.get("model",     {}).get("vision",      {}): data["model"]["vision"]             = False
             if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]            = 4
-            if not data.get("session",   {}).get("max_history", {}): data["session"]["max_history"]      = 1000
             
             if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
             if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = False
@@ -199,7 +198,6 @@ project_tools = boolean
 
 [session]
 persistence = boolean
-max_history = integer
 
 [display]
 show_reasoning = boolean
@@ -268,7 +266,6 @@ project_tools = false
 
 [session]
 persistence = true
-max_history = 1000
 
 [display]
 show_reasoning = true
