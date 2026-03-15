@@ -19,6 +19,9 @@ class Config:
         if not config_file.exists():
             config_path.mkdir(parents=True, exist_ok=True)
             config_file.write_text(DEFAULT_CONFIG.strip())
+            print(f"Default configuration file created at {config_file}")
+            print("Add model configuration to begin")
+            os._exit(0)
         
         (config_path / "sessions").mkdir(exist_ok=True)
         (config_path / "templates").mkdir(exist_ok=True)
