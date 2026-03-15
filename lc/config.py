@@ -40,9 +40,11 @@ class Config:
     def _parse_config(cls, config_file: Path) -> Dict[str, Any]:
         try:
             spec       = ConfigObj(CONFIG_SPEC.splitlines())
+            model_spec = ConfigObj(MODEL_SPEC.splitlines())
             data       = ConfigObj(os.path.expanduser(config_file), configspec=spec, write_empty_values=True)
 
             if not "stdin"   in data: data["stdin"]   = {}
+            if not "models"  in data: data["models"]  = {}
             if not "loading" in data: data["loading"] = {}
             if not "logging" in data: data["logging"] = {}
             if not "session" in data: data["session"] = {}
@@ -53,8 +55,7 @@ class Config:
             if not data.get("resolvers", {}).get("directories", {}): data["resolvers"]["directories"]    = []
             if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"]       = []
             if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]            = []
-            if not data.get("model",     {}).get("sysprompt",   {}): data["model"]["sysprompt"]          = "system.jinja"
-            if not data.get("model",     {}).get("vision",      {}): data["model"]["vision"]             = False
+            if not data.get("models",    {}).get("default",     {}): data["models"]["default"]           = "primary"
             if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]            = 4
             
             if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
@@ -64,6 +65,14 @@ class Config:
 
             if not data["stdin"].get("max_text_bytes", {}):   data["stdin"]["max_text_bytes"]   = 16384
             if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
+
+            if isinstance(data["skills"]["directories"],    str): data["skills"]["directories"]    = [data["skills"]["directories"]]
+            if isinstance(data["toolkits"]["directories"],  str): data["toolkits"]["directories"]  = [data["toolkits"]["directories"]]
+            if isinstance(data["resolvers"]["directories"], str): data["resolvers"]["directories"] = [data["resolvers"]["directories"]]
+
+            if isinstance(data["skills"]["pinned"]     ,    str): data["skills"]["pinned"]         = [data["skills"]["pinned"]]
+            if isinstance(data["toolkits"]["builtin"]     ,  str): data["toolkits"]["builtin"]     = [data["toolkits"]["builtin"]]
+            if isinstance(data["resolvers"]["builtin"]     , str): data["resolvers"]["builtin"]    = [data["resolvers"]["builtin"]]
 
             validation = data.validate(Validator())
 
@@ -75,6 +84,7 @@ class Config:
                     if value is False: return True
                     if isinstance(value, dict):
                         if is_invalid(value): return True
+                
                 return False
             
             def failed_keys(data: dict) -> List[str]:
@@ -88,10 +98,26 @@ class Config:
                 traverse(data)
                 return errors
 
-            if not validation and is_invalid(validation):
-                print("Config is invalid!")
-                print(f"Failed keys: {failed_keys(validation)}")
+            if not validation == True and is_invalid(validation):
+                print("Configuration is invalid")
+                print(f"The following entries have errors:")
+                for k in failed_keys(validation): print(f" - {k}")
                 os._exit(255)
+
+            models_args = ["default"]
+            configured_models = data.get("models", {})
+            for model in [m for m in configured_models if not m in models_args]:
+                model_data = ConfigObj(configured_models[model], configspec=model_spec, write_empty_values=True)
+                if not model_data.get("sysprompt", {}): model_data["sysprompt"] = "system.jinja"
+                if not model_data.get("vision",    {}): model_data["vision"]    = False
+                model_validation = model_data.validate(Validator())
+                if not model_validation == True and is_invalid(model_validation):
+                    print(f"Model configuration for {model} is invalid")
+                    print(f"The following entries have errors:")
+                    for k in failed_keys(model_validation): print(f" - {k}")
+                    os._exit(255)
+
+                data["models"][model] = model_data
 
             return data
 
@@ -110,7 +136,7 @@ class Config:
     def identity_path(self) -> Path: return (self._path / "agent_identity.rid")
     
     @property
-    def model(self) -> Dict[str, Any]: return self._data.get("model", {})
+    def model(self) -> Dict[str, Any]: return self.get_model_config()
 
     @property
     def session(self) -> Dict[str, Any]: return self._data.get("session", {})
@@ -149,6 +175,26 @@ class Config:
         si = self._data.get("stdin", {})
         return { "max_text_bytes": si.get("max_text_bytes", 16384),
                  "max_binary_bytes": si.get("max_binary_bytes", 512) }
+
+    def get_model_config(self, name: Optional[str] = None) -> Dict[str, Any]:
+        model_section = self._data.get("models", {})
+        
+        # Get all nested model definitions (excluding top-level model keys)
+        special_keys  = {"default"}
+        nested_models = { k: v for k, v in model_section.items() 
+                          if isinstance(v, dict) and k not in special_keys }
+        
+        if not nested_models: raise ValueError("No model configurations found in config file")
+        
+        primary_name = model_section.get("default")
+        if not primary_name: primary_name = list(nested_models.keys())[0]
+        
+        target_name = name or primary_name
+        if target_name not in nested_models:
+            available = ", ".join(sorted(nested_models.keys()))
+            raise ValueError(f"Model configuration '{target_name}' not found. Available: {available}")
+        
+        return nested_models[target_name]
     
     def _parse_list(self, value: Any) -> List[str]:
         if not value: return []
@@ -165,8 +211,7 @@ class Config:
         
         return value
 
-CONFIG_SPEC = """
-[model]
+MODEL_SPEC = """
 backend = string
 base_url = string
 model = string
@@ -177,6 +222,11 @@ temperature = float
 max_tokens = integer
 context_limit = integer
 context_shift_factor = float
+"""
+
+CONFIG_SPEC = """
+[models]
+default = string
 
 [toolkits]
 builtin = list
@@ -187,8 +237,8 @@ builtin = list
 directories = list
 
 [skills]
-directories = list
 pinned = list
+directories = list
 
 [loading]
 user_skills = boolean
@@ -211,73 +261,84 @@ max_binary_bytes = integer
 level = integer
 """
 
-DEFAULT_CONFIG = """[model]
-# Configure model runner parameters
-backend = openai
-base_url = http://localhost:1234/v1
-model = local-model
-api_key =
-sysprompt = system.jinja
-vision = yes
-temperature = 0.7
-max_tokens = 32768
-context_limit = 200000
-context_shift_factor = 0.35
+DEFAULT_CONFIG = """
+[models]
+  default = primary
+
+  [[primary]]
+    backend = openai
+    base_url = http://localhost:1234/v1
+    model = local-model
+    api_key =
+    sysprompt = system.jinja
+    vision = yes
+    temperature = 0.7
+    max_tokens = 32768
+    context_limit = 200000
+    context_shift_factor = 0.35
+
+# Add more model configurations as needed:
+# [[fast-model]]
+#   backend = openai
+#   base_url = http://localhost:1234/v1
+#   model = glm4-flash
+#   temperature = 0.3
+#   max_tokens = 8192
 
 [toolkits]
-# You can selectively enable built-in tools
-builtin = filesystem, shell, cryptography
+  # You can selectively enable built-in tools
+  builtin = filesystem, shell, cryptography
 
-# And add additional, custom tool loading
-# directories in addition to the defaults.
-directories =
+  # And add additional, custom tool loading
+  # directories in addition to the defaults.
+  directories =
 
 [resolvers]
-# You can selectively enable built-in resolvers
-builtin = environment, filesystem, system
+  # You can selectively enable built-in resolvers
+  builtin = environment, filesystem, system
 
-# And add additional, custom resolver loading
-# directories in addition to the defaults.
-directories =
+  # And add additional, custom resolver loading
+  # directories in addition to the defaults.
+  directories =
 
 [skills]
-# You can add additional skill loading
-# directories in addition to the defaults.
-directories =
+  # Pinned skills are fully loaded on session
+  # initialization, and injected into the
+  # system prompt. Also doesn't require pre-
+  # execution skill load (already available).
+  pinned =
 
-# Pinned skills are fully loaded on session
-# initialization, and injected into the
-# system prompt. Also doesn't require pre-
-# execution skill load (already available).
-pinned =
+  # You can add additional skill loading
+  # directories in addition to the defaults.
+  directories =
 
 [loading]
-# You can control skill and tool loading
-# behaviour defaults.
-user_skills = true
-user_tools = false
+  # You can control skill and tool loading
+  # behaviour defaults.
+  user_skills = true
+  user_tools = false
 
-# Project tools and skills look for a
-# local .lc folder in the current working
-# directory, and load from here if available
-# and enabled.
-project_skills = false
-project_tools = false
+  # Project tools and skills look for a
+  # local .lc folder in the current working
+  # directory, and load from here if available
+  # and enabled.
+  project_skills = false
+  project_tools = false
 
 [session]
-persistence = true
+  persistence = true
 
 [display]
-show_reasoning = true
-stream_output = true
+  show_reasoning = true
+  stream_output = true
 
 [stdin]
-# Truncation limits for piped data.
-max_text_bytes = 16384
-max_binary_bytes = 512
+  # Truncation limits for piped data.
+  max_text_bytes = 16384
+  max_binary_bytes = 512
 
 [logging]
-level = 4
+  level = 4
 """
 
 DEFAULT_SYSPROMPT = """I am `lc`, Humanity's Last Command: An excellent terminal assistant.
