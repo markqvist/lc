@@ -354,7 +354,7 @@ class GitResolver(Resolver):
         return {"git_branch": "main"} if is_git_repo() else None
 ```
 
-## Skills
+## Writing Skills
 
 Skills for `lc` are different. They can contain anything needed to do anything. Documentation, domain knowledge, operating procedures, tools, code, a pre-compiled Commodore 64 emulator to pretend you're still young. Needless to say, this is frightening. You be the judge on how to handle this.
 
