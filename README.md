@@ -213,6 +213,33 @@ $ lc -r --rebuild
 
 Sessions are stored as msgpack in `~/.lc/sessions/`. They're your business, not mine.
 
+### Context Management (Or: How I Learned to Stop Worrying and Love the KV-Cache)
+
+LLMs have context windows. You may have noticed. When you feed them more tokens than their little silicon brains can handle, they don't gracefully page to disk like a proper operating system. They just break. Or hallucinate. Or start speaking in tongues.
+
+`lc` handles this with context shifting. When your session grows too large, it quietly removes the oldest messages (keeping your first user message and system prompt for continuity), inserts a notification that context was shifted, and carries on. The session is backed up to a numbered file before each shift, so your complete history is preserved.
+
+**Configuration:**
+```ini
+[model]
+context_limit = 128000       # Your model's context window
+context_shift_factor = 0.35  # Remove 35% when limit reached (0 disables shifting)
+```
+
+The shift factor controls how aggressively we prune. Too low and you'll shift and recompute every other message. Too high and you'll erase anything that made the machine's actions just tangentially coherent. 0.35 is a sane default, but you will need to think for a moment here, and set it to something that suits your hardware limits and temperament. Set it to 0 if you enjoy watching things explode.
+
+**How it works:**
+- Monitors token usage after each API response
+- When estimated tokens >= context_limit, triggers shift
+- Backs up session to `{session_id}.msgpack.1` (incrementing if exists)
+- Removes messages after first user message until `shift_factor` portion freed
+- Inserts notification: "[Context shifted: removed N messages (~X tokens)...]"
+- Recalculates token estimates and continues
+
+Unlike certain other frameworks that shall remain nameless (but rhyme with "ShmopenClaw"), `lc` doesn't try to outsmart llama.cpp's native context handling. We manage *when* to shift, the inference server handles *how*. This means no mysterious compaction loops, no recursive self-destruction, no 3AM debugging sessions wondering why your agent suddenly forgot how to count. The KV-cache is recomputed only when actually necessary, not on *every*... *single*... *request*.
+
+You'll see the shift notification in the conversation transcript. The model sees it too, so it knows context was lost. Your first user message is always preserved - continuity matters, even when memory doesn't.
+
 ### Session Inspection & Streaming
 
 You want a fancy new UI? We already have UI at home. But okay, sometimes you want to watch the chaos unfold in style. Or maybe you just want to review what happened while you were making coffee.
