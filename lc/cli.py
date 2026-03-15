@@ -26,6 +26,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("-r", "--resume", action="store_true", help="Resume previous session (implies -i)")
     parser.add_argument("-I", "--session-id", type=str, metavar="ID", help="Resume specific session by ID or name")
     parser.add_argument("-n", "--name", type=str, metavar="NAME", help="Name for new session (for easy reference later)")
+    parser.add_argument("-m", "--model", type=str, metavar="NAME", help="Use named model configuration from config")
     parser.add_argument("-R", "--rebuild", action="store_true", help="Rebuild system prompt on resume (invalidates KV-cache, loads new skills, etc.)")
     parser.add_argument("-l", "--list-sessions", action="store_true", help="List available sessions and exit")
     parser.add_argument("-S", "--inspect-session", type=str, metavar="ID|PATH", help="Inspect session by ID/name or path to msgpack file")
@@ -761,7 +762,8 @@ def main() -> int:
             return 1
         
         session = Session.create_or_resume(config=config, resume=args.resume or bool(args.session_id), session_id=args.session_id,
-                                           session_name=args.name, rebuild_system_prompt=args.rebuild)
+                                           session_name=args.name, rebuild_system_prompt=args.rebuild,
+                                           model_override=args.model)
 
         if command:
             result = session.execute(command, gate_level=args.gate, can_prompt=can_prompt, output_mode=output_mode, stdin_context=stdin_context)

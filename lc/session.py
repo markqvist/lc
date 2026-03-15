@@ -115,6 +115,7 @@ class Session:
         self.context_analyzer: Optional[ContextAnalyzer] = None
         self.context_shift_manager: Optional[ContextShiftManager] = None
         self._is_resumed = False
+        self.model_override: Optional[str] = None
     
     @classmethod
     def get_version(cls) -> str:
@@ -122,8 +123,9 @@ class Session:
         return __version__
     
     @classmethod
-    def create(cls, config: Config, session_name: Optional[str] = None) -> "Session":
+    def create(cls, config: Config, session_name: Optional[str] = None, model_override: Optional[str] = None) -> "Session":
         session = cls(config, session_name=session_name)
+        session.model_override = model_override
         session._initialize()
         session.save()
         session._update_active_link()
@@ -131,17 +133,19 @@ class Session:
     
     @classmethod
     def create_or_resume(cls,  config: Config,  resume: bool = False,  session_id: Optional[str] = None,
-                         session_name: Optional[str] = None, rebuild_system_prompt: bool = False) -> "Session":
+                         session_name: Optional[str] = None, rebuild_system_prompt: bool = False,
+                         model_override: Optional[str] = None) -> "Session":
 
         if resume or session_id:
             existing = cls.load(config, session_id, rebuild_system_prompt=rebuild_system_prompt)
             if existing: 
                 existing._is_resumed = True
+                existing.model_override = model_override
                 return existing
 
             elif session_id: raise ValueError(f"Session not found: {session_id}")
         
-        return cls.create(config, session_name=session_name)
+        return cls.create(config, session_name=session_name, model_override=model_override)
     
     @classmethod
     def load(cls,  config: Config,  session_id: Optional[str] = None, rebuild_system_prompt: bool = False) -> Optional["Session"]:
@@ -439,8 +443,11 @@ class Session:
         
         return tool_dirs
     
-    def _create_model_backend(self, force_mock: bool = False):
-        model_config = self.config.model
+    def _create_model_backend(self, force_mock: bool = False, model_name: Optional[str] = None):
+        # CLI override takes precedence, then explicit parameter, then session override
+        target_model = model_name or self.model_override
+        model_config = self.config.get_model_config(target_model)
+        
         backend_type = model_config.get("backend", "openai")
         
         if force_mock or backend_type == "mock": return MockBackend(model_config)
