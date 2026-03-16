@@ -1,6 +1,6 @@
 There comes a moment, usually while watching your third Docker container fail to start, monkey-patching TypeScript directly in `node_modules`, or waiting for a package manager to resolve 581 dependencies you never asked for, when you recognize that your relationship with the machine has become unnecessarily ritualistic, deferred to "higher powers" of inscrutable dimensions (if more than half a million lines of code isn't, what is?), and somehow, through the wild goose-chase of reading make-pretend "documentation", now sits in stark contrast to the very reason you started installing this thing anyway.
 
-Up until very recently, we were bound to spend decades learning the dialects the computer prefers, constructing elaborate incantations for tasks we can describe in plain language in the timespan between blinking our eyes. I should know; I've spent half a lifetime doing exactly that.
+Up until very recently, we were bound to spend decades learning the dialects the computer prefers, constructing elaborate incantations for tasks we could have described in plain language in the timespan between blinking our eyes. I should know; I've spent half a lifetime doing exactly that.
 
 The current fashion for "AI agents" has now, with a promise of the opposite, merely relocated this theater to endlessly over-engineered "products", distant data centers (where requests - *everything* "your" agent does - are processed, logged, and monetized by entities whose interests run orthogonal to your own) and the sunk cost of *getting the darned framework to work reliably*.
 
