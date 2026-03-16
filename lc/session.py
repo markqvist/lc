@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List
 from types import SimpleNamespace
 from dataclasses import dataclass, field
 
-from RNS.vendor import umsgpack
+from RNS.vendor import umsgpack as mp
 
 from lc.config import Config
 from lc.agent import Agent
@@ -37,7 +37,7 @@ class SessionManager:
         sessions = []
         for session_file in sessions_dir.glob("*.msgpack"):
             try:
-                with open(session_file, "rb") as f: data = umsgpack.unpack(f)
+                with open(session_file, "rb") as f: data = mp.unpack(f)
                 data["_file"] = session_file.name
                 sessions.append(data)
             
@@ -85,9 +85,13 @@ class SessionManager:
 class Session:    
     SESSION_VERSION          = 1
     CONTEXT_PREVIEW_MESSAGES = 4 # Number of recent messages to show on resume
+
+    SESSION_IDLE             = -1
+    LOCK_EXT                 = ".lock"
     
     def __init__(self, config: Config, session_id: Optional[str] = None, session_name: Optional[str] = None):
         self.config = config
+        self.degraded = False
         self.session_id = session_id or str(uuid.uuid4())
         self.session_name = session_name
         self.created_at = time.time()
@@ -114,8 +118,9 @@ class Session:
 
         self.context_analyzer: Optional[ContextAnalyzer] = None
         self.context_shift_manager: Optional[ContextShiftManager] = None
-        self._is_resumed = False
         self.model_override: Optional[str] = None
+        self.session_file_path = None
+        self._is_resumed = False
     
     @classmethod
     def get_version(cls) -> str:
@@ -142,8 +147,7 @@ class Session:
                 existing._is_resumed = True
                 # CLI flag takes precedence over saved session model
                 # If CLI flag provided, update session for future resumptions
-                if model_override is not None:
-                    existing.model_override = model_override
+                if model_override is not None: existing.model_override = model_override
                 return existing
 
             elif session_id: raise ValueError(f"Session not found: {session_id}")
@@ -173,9 +177,10 @@ class Session:
         if not session_file.exists(): return None
         
         try:
-            with open(session_file, "rb") as f: data = umsgpack.unpack(f)
+            with open(session_file, "rb") as f: data = mp.unpack(f)
             session = cls._from_dict(config, data, rebuild_system_prompt=rebuild_system_prompt)
             session._update_active_link()
+            session.session_file_path = session_file
             return session
 
         except Exception: return None
@@ -291,9 +296,10 @@ class Session:
         temp_file = session_file.with_suffix(".msgpack.tmp")
         
         data = self._to_dict()
-        packed = umsgpack.packb(data)
+        packed = mp.packb(data)
         with open(temp_file, "wb") as f: f.write(packed)
         temp_file.rename(session_file)
+        self.session_file_path = session_file
     
     def _to_dict(self) -> Dict[str, Any]:
         data = { "version": self.SESSION_VERSION,
@@ -466,26 +472,79 @@ class Session:
         estimated = self.context_analyzer.estimate_current_tokens(self.conversation)
         return self.context_shift_manager.perform_shift()
 
-    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty", stdin_context: Optional[str] = None) -> ExecutionResult:
-        if stdin_context: self.conversation.append({"role": "user", "content": f"[Received via stdin]:\n{stdin_context}"})
-        self.conversation.append({"role": "user", "content": command})
+    def _lock(self) -> int:
+        pid           = os.getpid()
+        lock_time     = time.time()
+        lockfile_path = Path(self.session_file_path).expanduser().with_name(self.session_file_path.name + self.LOCK_EXT)
+        
+        if os.path.exists(lockfile_path):
+            lock_info = None
+            try:
+                with open(lockfile_path, "rb") as fh: lock_info = mp.unpackb(fh.read())
+                locking_pid  = lock_info["pid"]
+                locked_at    = lock_info["ts"]
+                lock_timeout = self.config.session.get("lock_timeout", 10800)
 
-        shifted, shift_msg = self._check_and_shift_context()
-        if shifted: RNS.log(f"Context shift performed: {shift_msg}", RNS.LOG_INFO)
+                if time.time() < locked_at+lock_timeout: return locking_pid
+                else:
+                    RNS.log(f"Removing timed out session lock {lockfile_path}", RNS.LOG_WARNING)
+                    try: lockfile_path.unlink()
+                    except Exception as e:
+                        RNS.log(f"Could not clean timed out session lock file {lockfile_path}: {e}", RNS.LOG_ERROR)
+                        self.degraded = True
 
+            except Exception as e:
+                RNS.log(f"Undecodable session lock data: {e}", RNS.LOG_ERROR)
+                RNS.log(f"Discarding session lock {lockfile_path}", RNS.LOG_ERROR)
+                try: lockfile_path.unlink()
+                except Exception as e:
+                    RNS.log(f"Could not clean invalid session lock file {lockfile_path}: {e}", RNS.LOG_ERROR)
+                    self.degraded = True
+
+                return self.SESSION_IDLE
+
+        RNS.log(f"Locking session: {lockfile_path}", RNS.LOG_VERBOSE)
+        lock_info = {"pid": pid, "ts": lock_time}
         try:
-            model_backend = self._create_model_backend()
-            toolkits = self._load_toolkits()
+            with open(lockfile_path, "wb") as fh: fh.write(mp.packb(lock_info))
+        except Exception as e:
+            RNS.log(f"Could not write session lock file {lockfile_path}: {e}", RNS.LOG_ERROR)
+            self.degraded = True
 
-            agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt, output_mode=output_mode)
-            output = agent.run_turn(command, checkpoint_callback=self.save)
+        return self.SESSION_IDLE
 
-            self.turn_count += 1
-            self.save()
+    def _unlock(self) -> bool:
+        lockfile_path = Path(self.session_file_path).expanduser().with_name(self.session_file_path.name + self.LOCK_EXT)
+        RNS.log(f"Unlocking session: {lockfile_path}", RNS.LOG_VERBOSE)
+        try: lockfile_path.unlink()
+        except Exception as e:
+            RNS.log(f"Could not remove session lock {lockfile_path}, the contained exception was: {e}", RNS.LOG_ERROR)
+            self.degraded = True
 
-            return ExecutionResult(success=True, output=output)
+    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty", stdin_context: Optional[str] = None) -> ExecutionResult:
+        pid = self._lock()
+        if not pid == self.SESSION_IDLE: return ExecutionResult(success=False, error=f"Session in execution and locked by PID {pid}")
+        else:
+            if stdin_context: self.conversation.append({"role": "user", "content": f"[Received via stdin]:\n{stdin_context}"})
+            self.conversation.append({"role": "user", "content": command})
 
-        except Exception as e: return ExecutionResult(success=False, error=str(e))
+            shifted, shift_msg = self._check_and_shift_context()
+            if shifted: RNS.log(f"Context shift performed: {shift_msg}", RNS.LOG_INFO)
+
+            try:
+                model_backend = self._create_model_backend()
+                toolkits = self._load_toolkits()
+
+                agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt, output_mode=output_mode)
+                output = agent.run_turn(command, checkpoint_callback=self.save)
+
+                self.turn_count += 1
+                self.save()
+
+                return ExecutionResult(success=True, output=output)
+
+            except Exception as e: return ExecutionResult(success=False, error=str(e))
+            finally: self._unlock()
     
     def run_interactive(self, gate_level: Optional[int] = None, can_prompt: bool = True, output_mode: str = "tty") -> int:
         if self._is_resumed: self._display_resume_context()

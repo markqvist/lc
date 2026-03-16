@@ -60,6 +60,7 @@ class Config:
             if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]            = []
             if not data.get("models",    {}).get("default",     {}): data["models"]["default"]           = "primary"
             if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]            = 4
+            if not data.get("session",   {}).get("lock_timeout",{}): data["session"]["lock_timeout"]     = 10800
             
             if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
             if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = False
@@ -251,6 +252,7 @@ project_tools = boolean
 
 [session]
 persistence = boolean
+lock_timeout = integer
 
 [display]
 show_reasoning = boolean
@@ -330,6 +332,7 @@ DEFAULT_CONFIG = """
 
 [session]
   persistence = true
+  lock_timeout = 10800
 
 [display]
   show_reasoning = true
