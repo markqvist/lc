@@ -1,11 +1,11 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
-"""Test standalone tool for verifying the tool loading system."""
+"""Minimal toolkit for demonstration purposes."""
 
 from lc.toolkit import Toolkit, tool
 
 
-class TestTool(Toolkit):
+class TestTools(Toolkit):
     """A test standalone tool."""
     
     gate_level = 0
@@ -21,7 +21,7 @@ class TestTool(Toolkit):
         Returns:
             Greeting message
         """
-        return f"Hello, {name}! This is a standalone tool."
+        return f"Hello, {name}! This is a tool response."
     
     @tool
     def multiply(self, x: float, y: float) -> str:
