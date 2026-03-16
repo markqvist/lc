@@ -4,3 +4,6 @@
 build
 dist
 lc/data/*.md
+***/logs
+***/cache
+***/cache_youtube
