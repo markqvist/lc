@@ -5,6 +5,7 @@ import sys
 import RNS
 import uuid
 import time
+import json
 from lc.vendor import jinja2
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -285,6 +286,36 @@ class Session:
             self._build_system_prompt()
             if self.conversation and self.conversation[0].get("role") == "system": self.conversation[0]["content"] = self.system_prompt
             else: self.conversation.insert(0, {"role": "system", "content": self.system_prompt})
+    
+    def rebuild_loaded_skills(self) -> None:        
+        active_skills = set()
+        
+        for msg in self.conversation:
+            if msg.get("role") != "assistant": continue
+            
+            tool_calls = msg.get("tool_calls", [])
+            if not tool_calls: continue
+            
+            for tool_call in tool_calls:
+                function = tool_call.get("function", {})
+                tool_name = function.get("name", "")
+                if tool_name != "skills.load_skill": continue
+                
+                arguments_raw = function.get("arguments", "{}")
+                if isinstance(arguments_raw, dict): arguments = arguments_raw
+                elif isinstance(arguments_raw, str):
+                    try: arguments = json.loads(arguments_raw)
+                    except json.JSONDecodeError: continue
+                else: continue
+                
+                skill_name = arguments.get("name", "")
+                if skill_name: active_skills.add(skill_name)
+        
+        previous_skills = set(self.loaded_skills)
+        self.loaded_skills = list(active_skills)
+        
+        removed = previous_skills - active_skills
+        if removed: RNS.log(f"Skills shifted out of context: {', '.join(sorted(removed))}", RNS.LOG_DEBUG)
 
     def save(self) -> None:
         if not self.config.session.get("persistence", True): return

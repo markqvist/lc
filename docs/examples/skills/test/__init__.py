@@ -8,9 +8,7 @@ from lc.toolkit import Toolkit, tool
 class TestSkillTools(Toolkit):
     """Test tools for skill system verification."""
     
-    gate_level = 0
-    
-    @tool
+    @tool(gate_level=0, modality="text")
     def echo(self, message: str) -> str:
         """
         Echo back the provided message.
@@ -23,7 +21,7 @@ class TestSkillTools(Toolkit):
         """
         return f"Echo: {message}"
     
-    @tool
+    @tool(gate_level=0, modality="text")
     def add(self, a: int, b: int) -> str:
         """
         Add two numbers together.

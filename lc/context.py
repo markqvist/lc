@@ -507,6 +507,9 @@ class ContextShiftManager:
         new_estimate = analyzer.recalculate_from_messages(self.session.conversation)
         self.session.input_tokens = new_estimate
 
+        # Rebuild loaded_skills to match what's still in context
+        self.session.rebuild_loaded_skills()
+
         self.shift_count += 1
 
         msg = f"Context shifted: removed {removed_messages} messages (~{removed_tokens} tokens)"
