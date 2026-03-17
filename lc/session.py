@@ -473,8 +473,8 @@ class Session:
         tool_dirs = []
         loading_config = self.config.loading
         
-        # User tools in config directory (configurable, default: disabled)
-        if loading_config.get("user_tools", False):
+        # User tools in config directory (configurable, default: enabled)
+        if loading_config.get("user_tools", True):
             user_dir = self.config.path / "tools"
             if user_dir.exists(): tool_dirs.append(user_dir)
         

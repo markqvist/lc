@@ -63,7 +63,7 @@ class Config:
             if not data.get("session",   {}).get("lock_timeout",{}): data["session"]["lock_timeout"]     = 10800
             
             if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
-            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = False
+            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = True
             if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"] = False
             if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"]  = False
 
@@ -170,7 +170,7 @@ class Config:
     def loading(self) -> Dict[str, bool]:
         ld = self._data.get("loading", {})
         return { "user_skills":    ld.get("user_skills", True),
-                 "user_tools":     ld.get("user_tools", False),
+                 "user_tools":     ld.get("user_tools", True),
                  "project_skills": ld.get("project_skills", False),
                  "project_tools":  ld.get("project_tools", False) }
 
@@ -321,7 +321,7 @@ DEFAULT_CONFIG = """
   # You can control skill and tool loading
   # behaviour defaults.
   user_skills = true
-  user_tools = false
+  user_tools = true
 
   # Project tools and skills look for a
   # local .lc folder in the current working
