@@ -166,7 +166,7 @@ class ContextAnalyzer:
         overhead = 10
 
         estimated = max(1, int((char_count + overhead) / self.CHARS_PER_TOKEN))
-        RNS.log(f"ContextAnalyzer estimated {role} message: {char_count} chars ~ {estimated} tokens", RNS.LOG_DEBUG)
+        RNS.log(f"ContextAnalyzer estimated {role} message: {char_count} chars ~ {estimated} tokens", RNS.LOG_EXTREME)
 
         return estimated
 
@@ -186,7 +186,7 @@ class ContextAnalyzer:
         # No history - use pure heuristic
         if not self.turn_breakdowns:
             total = sum(self._estimate_message_tokens(msg) for msg in conversation)
-            RNS.log(f"ContextAnalyzer estimated total (no history): {total} tokens for {len(conversation)} messages", RNS.LOG_DEBUG)
+            RNS.log(f"ContextAnalyzer estimated total (no history): {total} tokens for {len(conversation)} messages", RNS.LOG_EXTREME)
             return total
 
         # Start with last known prompt token count
@@ -199,9 +199,9 @@ class ContextAnalyzer:
             new_messages = conversation[-new_count:]
             estimated_new = sum(self._estimate_message_tokens(msg) for msg in new_messages)
             total += estimated_new
-            RNS.log(f"ContextAnalyzer estimated total: {last_breakdown.prompt_tokens} (known) + {estimated_new} ({new_count} new) = {total} tokens", RNS.LOG_DEBUG)
+            RNS.log(f"ContextAnalyzer estimated total: {last_breakdown.prompt_tokens} (known) + {estimated_new} ({new_count} new) = {total} tokens", RNS.LOG_EXTREME)
         
-        else: RNS.log(f"ContextAnalyzer estimated total: {total} tokens (no new messages)", RNS.LOG_DEBUG)
+        else: RNS.log(f"ContextAnalyzer estimated total: {total} tokens (no new messages)", RNS.LOG_EXTREME)
 
         return total
 
