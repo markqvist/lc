@@ -15,10 +15,13 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, "README.md"), "r", encoding="utf-8") as f: long_description = f.read()
 exec(open("lc/_version.py", "r").read())
 
-package_data = {"": [ "data/README.md",
-                      "data/GUIDE.md",
-                      "data/CHRONICLES.md",
-                      "data/Chrome_Horizons.md" ] }
+package_data = {"lc": [ "data/README.md",
+                        "data/GUIDE.md",
+                        "data/CHRONICLES.md",
+                        "data/Chrome_Horizons.md",
+                        "data/examples/**/*.py",
+                        "data/examples/**/*.md",
+                        "data/examples/**/*.txt" ] }
 
 setup(name="lc",
       version=__version__,

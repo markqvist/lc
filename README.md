@@ -350,6 +350,8 @@ class MyTools(Toolkit):
 
 Then drop your toolkits into `~/.lc/tools`. That's it. No YAML schemas. No protobuf definitions. Just code.
 
+See [examples](./docs/examples/tools) to get started.
+
 ## Writing Resolvers
 
 Resolvers provide context for the system prompt:
@@ -377,6 +379,8 @@ skills/
 ```
 
 Skills load on demand (or pin them to load immediately). The agent can request skills it needs.
+
+See [examples](./docs/examples/skills) to get started.
 
 ## Safety
 

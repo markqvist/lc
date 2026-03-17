@@ -10,10 +10,13 @@ clean:
 	@-rm -rf ./__pycache__
 	@-rm -rf ./lc/__pycache__
 	@-rm -rf ./*.egg-info
+	@-rm -rf ./lc/data/*.md
+	@-rm -rf ./lc/data/examples
 	@echo Done
 
 assets:
 	cp README.md GUIDE.md CHRONICLES.md Chrome_Horizons.md lc/data/
+	cp -rv docs/examples lc/data/
 
 build_wheel: assets
 	python3 setup.py bdist_wheel
