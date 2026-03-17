@@ -3,6 +3,9 @@
 import RNS
 import json
 import time
+import socket
+import urllib.request
+import urllib.error
 from typing import List, Dict, Any, Optional
 
 from lc.agent import ModelBackend
@@ -11,7 +14,7 @@ from lc.agent import ModelBackend
 class OpenAIBackend(ModelBackend):
     CONNECT_TIMEOUT = 10
     READ_TIMEOUT    = 1800
-    REQUEST_TRIES = 8
+    REQUEST_TRIES   = 8
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -20,9 +23,6 @@ class OpenAIBackend(ModelBackend):
         self.api_key = config.get("api_key", "")
         self.temperature = config.get("temperature", 0.7)
         self.max_tokens = config.get("max_tokens", 32768)
-        
-        import requests
-        self.session = requests.Session()
     
     def complete(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         return self._complete(messages, tools)
@@ -59,7 +59,6 @@ class OpenAIBackend(ModelBackend):
         return sanitized
     
     def _complete(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
-        import requests
         attempts_left = self.REQUEST_TRIES
         
         headers = { "Content-Type": "application/json",
@@ -78,18 +77,25 @@ class OpenAIBackend(ModelBackend):
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
 
-        payload_json = json.dumps(payload, ensure_ascii=False)
+        payload_json = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        url = f"{self.base_url}/chat/completions"
         
         while attempts_left:
             attempts_left -= 1
             try:
                 RNS.log("Sending inference request", RNS.LOG_DEBUG)
-                response = self.session.post(f"{self.base_url}/chat/completions",
-                                             headers=headers,
-                                             data=payload_json,
-                                             timeout=(self.CONNECT_TIMEOUT, self.READ_TIMEOUT))
-                response.raise_for_status()
-                data = response.json()
+                
+                # Set connect timeout via socket default
+                old_timeout = socket.getdefaulttimeout()
+                socket.setdefaulttimeout(self.CONNECT_TIMEOUT)
+                
+                try:
+                    req = urllib.request.Request(url, data=payload_json, headers=headers, method="POST")
+                    response = urllib.request.urlopen(req, timeout=self.READ_TIMEOUT)
+                
+                finally: socket.setdefaulttimeout(old_timeout)
+                
+                data = json.loads(response.read().decode("utf-8"))
                 message = data["choices"][0]["message"]
 
                 RNS.log("Inference request succeeded", RNS.LOG_DEBUG)
@@ -104,19 +110,31 @@ class OpenAIBackend(ModelBackend):
                 # Extract usage statistics if present
                 usage = data.get("usage")
                 if usage:
-                    result["usage"] = {
-                        "prompt_tokens": usage.get("prompt_tokens", 0),
-                        "completion_tokens": usage.get("completion_tokens", 0),
-                        "total_tokens": usage.get("total_tokens", 0)
-                    }
+                    result["usage"] = { "prompt_tokens": usage.get("prompt_tokens", 0),
+                                        "completion_tokens": usage.get("completion_tokens", 0),
+                                        "total_tokens": usage.get("total_tokens", 0) }
 
                 return result
 
+            except urllib.error.HTTPError as e:
+                RNS.log(f"HTTP error {e.code} during inference request: {e.reason}", RNS.LOG_ERROR)
+                if attempts_left:
+                    backoff = self.REQUEST_TRIES - attempts_left + 1
+                    RNS.log(f"Retrying request in {RNS.prettytime(backoff)}", RNS.LOG_ERROR)
+                    time.sleep(backoff)
+            
+            except urllib.error.URLError as e:
+                RNS.log(f"Connection error during inference request: {e.reason}", RNS.LOG_ERROR)
+                if attempts_left:
+                    backoff = self.REQUEST_TRIES - attempts_left + 1
+                    RNS.log(f"Retrying request in {RNS.prettytime(backoff)}", RNS.LOG_ERROR)
+                    time.sleep(backoff)
+            
             except Exception as e:
                 RNS.log(f"Error during inference request: {e}", RNS.LOG_ERROR)
                 RNS.trace_exception(e)
                 if attempts_left:
-                    backoff = self.REQUEST_TRIES-attempts_left+1
+                    backoff = self.REQUEST_TRIES - attempts_left + 1
                     RNS.log(f"Retrying request in {RNS.prettytime(backoff)}", RNS.LOG_ERROR)
                     time.sleep(backoff)
         
