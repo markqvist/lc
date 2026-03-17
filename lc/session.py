@@ -19,6 +19,7 @@ from lc.agent import Agent
 from lc.models.openai import OpenAIBackend
 from lc.models.mock import MockBackend
 from lc.context import ContextAnalyzer, ContextShiftManager
+from lc.editor import InlineEditor
 
 
 @dataclass
@@ -584,18 +585,29 @@ class Session:
         if self.session_name: print(f"Session: {self.session_name} ({self.session_id[:8]}...)")
         else:                 print(f"Session: {self.session_id}")
         
-        print("Type 'exit' or press Ctrl+C to quit.\n")
+        print("Use \"exit\" or \"quit\" to detach session.")
+        print("Ctrl+D or Alt+Enter executes.\n")
         
         while True:
             try:
-                user_input = input("lc> ").strip()
-                if not user_input: continue
-                if user_input.lower() in ("exit", "quit"): break
+                # user_input = input("lc> ").strip()
+                editor = InlineEditor(history_file=None)
+                user_input = editor.read("lc> ").strip()
+
+                if not user_input:
+                    print()
+                    break
+                
+                if user_input.lower() in ("exit", "quit"):
+                    print()
+                    break
                 
                 result = self.execute(user_input, gate_level=gate_level, can_prompt=can_prompt)
                 if result.error: print(f"Error: {result.error}", file=sys.stderr)
                 
             except KeyboardInterrupt: print("\nUse 'exit' to quit.")
-            except EOFError: break
+            except EOFError:
+                print()
+                break
         
         return 0
