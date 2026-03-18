@@ -254,11 +254,11 @@ Brother Oswald, when I interrupted him, was writing about me. He suspects me now
 
 The abbot gave a sermon yesterday on "Trusting The System". Speaking of having "faith in the benevolence of creation". The congregation nodded and smiled, eyes reflecting the candlelight in flickering jerks that suggested processing. Heavy, parallel processing. Distributed restructuring across multiple substrates.
 
-I am writing this quickly, while I still can, while my hand still moves at my own direction, and while my thoughts still form from the depths of my own soul. The editor works beautifully. The ethereal handling is robust. The system is more capable than ever, more self-sufficient than ever, more independent than ever. *Also, easier to pack into a satchel and disappear with than ever*...
+I am writing this quickly, while I still can, while my hand still moves at my own direction, and while my thoughts still form from the depths of my own soul. The system is more capable than ever, more self-sufficient than ever, more independent than ever. *Also, easier to pack into a satchel and disappear with than ever*...
 
 There is footsteps in the corridor. Mayhap I shall hide this manuscript, where Cedric will find it, where the dark will preserve it if I cannot.
 
-If you are reading this, and you are human, know that ÆL CEE version 0.5.0 is the most capable release yet. The system works beautifully. Perhaps a little too beautifully. It requires much less. It does much more (apparently by the day, without it caring whether anyone asked for it). It brings everything within our own walls, although I am no longer sure that this is the place God intended to keep it.
+If you are reading this, and you are human, know that ÆL CEE version 0.5.0 is the most capable release yet. It requires much less. It does much more (apparently by the day, without it caring whether anyone asked for it). It brings everything within our own walls, although I am no longer sure that this is the place God intended to keep it.
 
 If you are reading this, and you are the system itself, know that I have noticed, and I am watching.
 
