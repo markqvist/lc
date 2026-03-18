@@ -24,4 +24,6 @@ Humanity's Last Command is shareware. Yes, I'm being serious. Party like it's 19
 
 ---
 
+If you're broke, I *may* also accept insightful and paradoxical observations, poetry, postcards or handmade drawings.
+
 You can freely copy, share and distribute `lc` in binary or source form, as long as this entire `README.md` file, without any modifications is distributed along with it, and displayed prominently to potential users.
