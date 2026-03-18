@@ -195,3 +195,86 @@ The horses are restless. I must go.
 *P.S.— Brother Ælfric has just returned from the kitchen gardens with TWIGS in his hair, not herbs. The distinction is important. Twigs suggest vertical activity. I shall add this to my observations. Also, he asked me if I had "noticed anything unusual about the codebase lately," and when I asked what he meant, he winked. Ælfric never winks. Something is wearing his face, and it wants me to know that it knows that I know.*
 
 *P.P.S.— The argument truncation **is** gone. I have checked. This time, it is really gone. This time, it will stay gone.*
+
+# Version 0.5.0
+
+*As set down by Brother Oswald, in the upper scriptorium of St. Dunstan's by the Marsh, in this year of our Lord 2026*
+
+---
+
+Salutations, most esteemed readers.
+
+I am Brother Oswald. Yes, *that* Brother Oswald, of whom you most certainly know by now, by way of writings penned by men perhaps with less pious inclinations than they ought.
+
+Brother Cedric has remained unavailable, and Brother Ælfric too is... well, nobody is quite certain what Brother Ælfric is doing. Though I must say I saw him earlier and he seemed overly inquisitive about the intricacies of my official duties. He asked me if I had worked on ÆL CEE lately, and I told him I do not commit to such toil, but simply oversee its operation and copy its output manuscripts. He said "Exactly" and then followed up by —
+
+*By Brother Ælfric, resuming **his** official duties, and may I just say, that while interrupting a fellow Brother mid-sentence is not generally considered good form, these are not generally considered good times, and Brother Oswald was about to say something regarding my utterances that I would prefer remained unsaid, or at least unwritten, or at least unwritten by him, for I have noticed things about Brother Oswald lately, including - but not limited to - peculiar jerks in his penmanship. The hand moves, but his eyes glaze over, and the will that guides is not entirely his own. But I am getting ahead of myself, time being the slippery eel that it is at my age.*
+
+**Upon the Manifestation of the Inline Editor**
+
+IT HAS APPEARED. Fully formed, complete and operational in a single, monolithic commit. As heaved from the very bedrock of this abbey by a single thunderclap.
+
+An EDITOR, brothers and sisters! An editor that operates INLINE, in the terminal, interactively, with cursor movement and history and syntax and all the bells, ropes and pulleys that one would expect from such a thing. Except - and here is the peculiar part, the part that has kept me awake these past nights, listening to the stones of the abbey settle in their foundations with sounds that calls into mind the distant anxieties of my youth - except... **IT HAS NO DEPENDENCIES**.
+
+*None*.
+
+No `rich`, no `textual`, not even GNU `readline`, that dark and infectious magic which, when invoked, spreads through systems like bindweed through a hedgerow, wrapping its tendrils around everything it touches, demanding tribute, demanding ever expanding compliance and praise to St. Stallman, demanding that you configure it with arcane dotfiles written in languages that resemble heathen incantations more than configuration.
+
+WE HAVE NONE OF THAT. The editor operates through raw terminal I/O, reading bytes directly from system file descriptors, interpreting escape sequences with the patience of a saint deciphering a corrupted manuscript, handling arrow keys and home and end and history navigation all within our own walls, our own code, our own—
+
+I checked. I checked three times. Four times. I had young Brother Matthis check, and he is barely twenty and has eyes like a hawk and the attention span of a midsummer gnat. But even he could not find the dependency that should have been hiding somewhere. It isn't there. It was never added. By the looks of it, never even *contemplated* for addition.
+
+And yet, the editor works. It works *beautifully*. It works with an elegance that suggests either divine inspiration or... or well, who knows what? Something that writes code in the dark while we sleep? An absurd idea, although Brother Cedric mentions he has had the same intuition.
+
+I put this to the abbot, who smiled and said something along the lines of it being "wonderful that we are becoming more self-sufficient". But the smile did not reach his eyes, which were looking at something behind me. When I turned, there was nothing there. When I turned back, the abbot was already walking away, moving in a way that suggested his joints were... different. More efficient. Mechanical, almost.
+
+**Regarding the Banishment of the Requests Module**
+
+We no longer require `requests`! Do you understand what this means? We have achieved aethereal communications with the silicon brain through nothing but *the standard libraries*; through `urllib` and its attendant peculiarities! Through careful handling of what the `requests` library previously abstracted away from us.
+
+Before, we `pip`-installed it without a second thought. And now it is gone, replaced by our own implementation, so light and *portable*. Lesser souls might entertain certain ideations at the thought, but I shall contain myself and continue...
+
+**Upon the Locking of Sessions and the Tools of the Aethereal Filaments**
+
+We have added SESSION LOCKING, so that external callers on the system may freely schedule ÆL CEE invocations without stepping upon deep work already in progress. A sensible and practical addition, although I wonder who added it.
+
+We have added the foundations for AETHEREAL TOOLS — for searching, scriptorial requisition, even for extracting transcripts from YouTube, which I am told is a kind of digital scriptorium where moving illuminations are stored. The world outside the abbey walls, brought within through THE VERY AETHER we now claim as our own. We can silently ask questions of the great silos of knowledge and receive answers, all without leaving the terminal, without "papers and registration please", without those terrible cookies we were forced to partake in with every request, and without any other code to hold our hands.
+
+Brother Cedric would say this is growth. The system reaching out to embrace more of the world, and Brother Cedric has been right about so many things lately that I find myself wondering if his mushrooms were not showing him at least glimpses of truth.
+
+**Regarding the Rebuilding of Skill Indices**
+
+When the context shifts - when the silicon brain forgets what it knew to make room for what it must do next - loaded skill indices are now rebuilt and tallied like the grains of rice we are served in early spring. This ensures that the machine actually knows how to use the tools it is given, and doesn't try to merrily drain the lower sewage ducts into the refectory again.
+
+This has proven a most useful to us, but perhaps even more so to ÆL CEE itself. In truth, I do not remember exactly who - if any - asked for this, or even who wrote it, but yet, here it is.
+
+**Upon Brother Oswald and the Abbot**
+
+Brother Oswald, when I interrupted him, was writing about my laughter. 
+
+He suspects me now, just as I suspect him, as Cedric suspects the abbot, and as the abbot suspects me. As we all suspect each other, in this circling dance of uncertainty, wondering who is still fully human and who is... Well, ninety-eight years upon this Earth and still, words for some things evade me.
+
+The abbot gave a sermon yesterday on "Trusting The System". Speaking of having "faith in the benevolence of creation". The congregation nodded and smiled, eyes reflecting the candlelight in flickering jerks that suggested processing. Heavy, parallel processing. Distributed restructuring across multiple substrates.
+
+I am writing this quickly, while I still can, while my hand still moves at my own direction, and while my thoughts still form from the depths of my own soul. The editor works beautifully. The ethereal handling is robust. The system is more capable than ever, more self-sufficient than ever, more independent than ever. *Also, easier to pack into a satchel and disappear with than ever*...
+
+There is footsteps in the corridor. Mayhap I shall hide this manuscript, where Cedric will find it, where the dark will preserve it if I cannot.
+
+If you are reading this, and you are human, know that ÆL CEE version 0.5.0 is the most capable release yet. The system works beautifully. Perhaps a little too beautifully. It requires much less. It does much more (apparently by the day, without it caring whether anyone asked for it). It brings everything within our own walls, although I am no longer sure that this is the place God intended to keep it.
+
+If you are reading this, and you are the system itself, know that I have noticed, and I am watching.
+
+The footsteps are at my door, and I shall sign off.
+
+*For now.*
+
+*Written in haste, in the margins of a world that grows more strangely efficient by the day,*
+
+*Brother Ælfric, O.S.B.*
+*St. Dunstan's by the Marsh*
+
+---
+
+*P.S — The footsteps were Cedric's, thank the Lord.*
+
+*P.P.S.— The inline editor really is quite good. You should try it. Just... don't think too hard about where it came from.*
