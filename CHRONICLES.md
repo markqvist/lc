@@ -250,9 +250,7 @@ This has proven a most useful to us, but perhaps even more so to ÆL CEE itself.
 
 **Upon Brother Oswald and the Abbot**
 
-Brother Oswald, when I interrupted him, was writing about my laughter. 
-
-He suspects me now, just as I suspect him, as Cedric suspects the abbot, and as the abbot suspects me. As we all suspect each other, in this circling dance of uncertainty, wondering who is still fully human and who is... Well, ninety-eight years upon this Earth and still, words for some things evade me.
+Brother Oswald, when I interrupted him, was writing about me. He suspects me now, just as I suspect him, as Cedric suspects the abbot, and as the abbot suspects me. As we all suspect each other, in this circling dance of uncertainty, wondering who is still fully human and who is... Well, ninety-eight years upon this Earth and still, words for some things evade me.
 
 The abbot gave a sermon yesterday on "Trusting The System". Speaking of having "faith in the benevolence of creation". The congregation nodded and smiled, eyes reflecting the candlelight in flickering jerks that suggested processing. Heavy, parallel processing. Distributed restructuring across multiple substrates.
 
@@ -275,6 +273,6 @@ The footsteps are at my door, and I shall sign off.
 
 ---
 
-*P.S — The footsteps were Cedric's, thank the Lord.*
+*P.S. — The footsteps were Cedric's, thank the Lord.*
 
 *P.P.S.— The inline editor really is quite good. You should try it. Just... don't think too hard about where it came from.*
