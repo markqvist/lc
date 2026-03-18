@@ -31,7 +31,7 @@ $ lc "Extract audio from all video files, transcribe them, find the ones about P
 
 Then you watch as the machine does the work. It plans. It executes. It reports. You drink coffee and scratch your bum.
 
-If you want a bit more context, read [The Guide](./GUIDE.md) or [Chrome Horizons](./Chrome_Horizons.md).
+If you want a bit more context, read [The Guide](./GUIDE.md), [The Chronicles](./CHRONICLES.md) or [Chrome Horizons](./Chrome_Horizons.md).
 
 ## What Is This?
 
