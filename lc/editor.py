@@ -1,5 +1,7 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
+from __future__ import annotations
+
 import os
 import sys
 import termios
