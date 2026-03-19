@@ -70,6 +70,7 @@ class Config:
             
             if not data.get("display",   {}).get("stream_output",   {}): data["display"]["stream_output"]    = True
             if not data.get("display",   {}).get("render_markdown", {}): data["display"]["render_markdown"]  = True
+            if not data.get("display",   {}).get("show_reasoning",  {}): data["display"]["show_reasoning"]   = False
 
             if not data["stdin"].get("max_text_bytes", {}):   data["stdin"]["max_text_bytes"]   = 16384
             if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
@@ -339,7 +340,7 @@ DEFAULT_CONFIG = """
   lock_timeout = 10800
 
 [display]
-  show_reasoning = yes
+  show_reasoning = no
   stream_output = yes
   render_markdown = yes
 

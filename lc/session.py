@@ -124,6 +124,7 @@ class Session:
         self.model_override: Optional[str] = None
         self.session_file_path = None
         self._is_resumed = False
+        self._is_interactive = False
         self._disable_markdown = disable_markdown
     
     @classmethod
@@ -556,7 +557,9 @@ class Session:
             RNS.log(f"Could not remove session lock {lockfile_path}, the contained exception was: {e}", RNS.LOG_ERROR)
             self.degraded = True
 
-    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty", stdin_context: Optional[str] = None) -> ExecutionResult:
+    def execute(self, command: str, gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty",
+                stdin_context: Optional[str] = None) -> ExecutionResult:
+
         pid = self._lock()
         if not pid == self.SESSION_IDLE: return ExecutionResult(success=False, error=f"Session in execution and locked by PID {pid}")
         else:
@@ -573,6 +576,8 @@ class Session:
                 agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt,
                               output_mode=output_mode, disable_markdown=self._disable_markdown)
 
+                if self._is_interactive: agent.renderer.output_trail = ""
+
                 output = agent.run_turn(command, checkpoint_callback=self.save)
 
                 self.turn_count += 1
@@ -585,6 +590,7 @@ class Session:
     
     def run_interactive(self, gate_level: Optional[int] = None, can_prompt: bool = True, output_mode: str = "tty") -> int:
         if self._is_resumed: self._display_resume_context()
+        self._is_interactive = True
 
         print(f"lc {self.get_version()} - Interactive Mode")
         if self.session_name: print(f"Session: {self.session_name} ({self.session_id[:8]}...)")

@@ -751,6 +751,8 @@ def main() -> int:
         stdout_is_tty = sys.stdout.isatty()
         can_prompt = stdin_is_tty and stdout_is_tty
         output_mode = "tty" if stdout_is_tty else "pipe"
+
+        stream_output = config.display.get("stream_output", True)
         
         # Read stdin if available
         stdin_data = read_stdin(config)
@@ -784,12 +786,13 @@ def main() -> int:
                 return 1
             
             if not args.interactive:
-                if config.display["stream_output"] == True: print("")
+                if config.display["stream_output"] == True and output_mode == "tty": print("")
                 return 0
         
         # Interactive mode
-        if args.interactive or args.resume or not command:
-            if command: print("\n")
+        if output_mode == "tty" and (args.interactive or args.resume or not command):
+            if command and stream_output: print("\n")
+            if command and not stream_output: print("")
             return session.run_interactive(gate_level=args.gate, can_prompt=can_prompt, output_mode=output_mode)
         
         return 0

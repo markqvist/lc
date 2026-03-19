@@ -35,7 +35,7 @@ class TTYRenderer:
     FRAME_INTERVAL = 0.025
 
     def __init__(self, stream=None, show_reasoning: bool = True, stream_response: bool = False, 
-                 mode: str = "tty", render_markdown: bool = True):
+                 mode: str = "tty", render_markdown: bool = True, output_trail: str = "\n"):
 
         self.stream = stream or sys.stdout
         self.mode = mode
@@ -53,6 +53,8 @@ class TTYRenderer:
 
         self._md_formatter: Optional[MarkdownFormatter] = None
         self._md_streamer: Optional[StreamingMarkdownRenderer] = None
+
+        self.output_trail = output_trail
         
         if self._render_markdown:
             self._md_formatter = MarkdownFormatter()
@@ -233,6 +235,7 @@ class TTYRenderer:
         else:          return text
 
     def display_response(self, content: str, reasoning_content: Optional[str] = None) -> None:
+        output_trail = self.output_trail
         if self._is_tty():
             if reasoning_content and self.show_reasoning: self.display_reasoning_content(reasoning_content)
             
@@ -240,10 +243,10 @@ class TTYRenderer:
                 self.clear_thinking()
                 
                 if self._render_markdown and self._md_formatter:
-                    formatted = self._md_formatter.format_block(content)
-                    self.write(f"{formatted}", end="")
+                    formatted = self._md_formatter.format_block(content).rstrip().lstrip()
+                    self.write(f"{formatted}", end=output_trail)
                 
-                else: self.write(f"{content}", end="")
+                else: self.write(f"{content.rstrip().lstrip()}", end=output_trail)
 
         # Pipe mode: Final, raw output only
         else:
