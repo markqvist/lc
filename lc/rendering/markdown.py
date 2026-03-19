@@ -54,7 +54,7 @@ class MarkdownFormatter:
     
     # Table patterns
     TABLE_ROW_RE = re.compile(r'^\s*\|?(.+?)\|?\s*$')
-    TABLE_SEP_RE = re.compile(r'^\s*\|?\s*(:?-+(:?)\s*\|?)+\s*$')
+    TABLE_SEP_RE = re.compile(r'^\s*\|?(?:\s*:?-+:?\s*\|)+\s*$')
     
     # Inline patterns (processed in order of specificity)
     INLINE_CODE_RE = re.compile(r'`([^`]+)`')
@@ -459,7 +459,7 @@ class StreamingMarkdownRenderer:
         # Table state
         self.in_table = False
         self.table_buffer = []
-        self.table_provisional_lines = 0
+        self.table_row_widths = []  # Display width of each provisional table row
         
         self._term_width = self._get_terminal_width()
         self._provisional_width = 0       # Display columns of provisional output
@@ -544,15 +544,18 @@ class StreamingMarkdownRenderer:
                 # Starting potential table
                 self.in_table = True
                 self.table_buffer = [line]
-                self.table_provisional_lines = 0
-                # Output provisionally
-                self._write_provisional(line + '\n')
-                self.table_provisional_lines += 1
+                self.table_row_widths = []
+                # Output provisionally and track row width
+                provisional_line = line + '\n'
+                self._write_provisional(provisional_line)
+                # Store just the content width (excluding newline which adds 0 physical lines visually)
+                self.table_row_widths.append(display_width(line))
             else:
                 # Continuing table
                 self.table_buffer.append(line)
-                self._write_provisional(line + '\n')
-                self.table_provisional_lines += 1
+                provisional_line = line + '\n'
+                self._write_provisional(provisional_line)
+                self.table_row_widths.append(display_width(line))
         else:
             # Not a table row
             if self.in_table:
@@ -569,7 +572,7 @@ class StreamingMarkdownRenderer:
                         self.stream.flush()
                     self.in_table = False
                     self.table_buffer = []
-                    self.table_provisional_lines = 0
+                    self.table_row_widths = []
                     # Continue to format current line
                     self._clear_provisional()
                     formatted = self.formatter.format_line(line)
@@ -589,13 +592,18 @@ class StreamingMarkdownRenderer:
         if not self.in_table or len(self.table_buffer) < 2:
             return
         
-        # Move cursor up to start of provisional table
-        if self.table_provisional_lines > 0:
-            self.stream.write(self.CURSOR_UP.format(self.table_provisional_lines))
-            self.stream.write('\r')
+        # Calculate how many physical terminal lines the provisional output occupies
+        # Each row: 1 line (hard newline) + wrapped lines from content exceeding term_width
+        lines_up = 0
+        for row_width in self.table_row_widths:
+            # A row of width W occupies ceil(W / term_width) physical lines
+            lines_up += max(1, (row_width + self._term_width - 1) // self._term_width)
         
-        # Clear from cursor to end
-        self.stream.write(self.CLEAR_TO_END)
+        if lines_up > 0:
+            self.stream.write(self.CURSOR_UP.format(lines_up))
+        
+        # Carriage return and clear to end
+        self.stream.write('\r' + self.CLEAR_TO_END)
         self.stream.flush()
         
         # Output formatted table
@@ -608,7 +616,7 @@ class StreamingMarkdownRenderer:
         # Reset state
         self.in_table = False
         self.table_buffer = []
-        self.table_provisional_lines = 0
+        self.table_row_widths = []
         self._provisional_width = 0
         self._provisional_active = False
     
@@ -649,6 +657,7 @@ class StreamingMarkdownRenderer:
                     self.stream.flush()
                 self.in_table = False
                 self.table_buffer = []
+                self.table_row_widths = []
         
         # Flush remaining content as final line
         if self.line_buffer: self._flush_line()
@@ -666,6 +675,6 @@ class StreamingMarkdownRenderer:
         self.code_fence_indent = ""
         self.in_table = False
         self.table_buffer = []
-        self.table_provisional_lines = 0
+        self.table_row_widths = []
         self._provisional_width = 0
         self._provisional_active = False
