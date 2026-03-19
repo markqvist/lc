@@ -2,7 +2,7 @@
 
 import re
 import shutil
-from typing import Optional, TextIO
+from typing import Optional, TextIO, List, Tuple
 
 from lc.vendor import wcwidth
 def display_width(text: str) -> int:
@@ -30,6 +30,19 @@ class MarkdownFormatter:
     BLOCK_BOT = "╰"
     RULE_CHAR = "─"
     
+    # Table box drawing
+    TABLE_H = "─"
+    TABLE_V = "│"
+    TABLE_TL = "┌"
+    TABLE_TR = "┐"
+    TABLE_BL = "└"
+    TABLE_BR = "┘"
+    TABLE_ML = "├"
+    TABLE_MR = "┤"
+    TABLE_TM = "┬"
+    TABLE_BM = "┴"
+    TABLE_MM = "┼"
+    
     # Indent for code block content
     BLOCK_INDENT = "  "
     
@@ -38,6 +51,10 @@ class MarkdownFormatter:
     CODE_FENCE_RE = re.compile(r'^(\s*)```(.*)$')
     HORIZONTAL_RULE_RE = re.compile(r'^(\s*)(---+|===+|\*\*\*+|___+)\s*$')
     UNORDERED_LIST_RE = re.compile(r'^(\s*)([-*+])\s+(.+)$')
+    
+    # Table patterns
+    TABLE_ROW_RE = re.compile(r'^\s*\|?(.+?)\|?\s*$')
+    TABLE_SEP_RE = re.compile(r'^\s*\|?\s*(:?-+(:?)\s*\|?)+\s*$')
     
     # Inline patterns (processed in order of specificity)
     INLINE_CODE_RE = re.compile(r'`([^`]+)`')
@@ -159,31 +176,269 @@ class MarkdownFormatter:
         if match: return True, match.group(1)
         return False, ""
     
+    # Table methods
+    
+    def is_table_row(self, line: str) -> bool:
+        """Check if line looks like a table row (contains pipes)."""
+        if '|' not in line: return False
+        match = self.TABLE_ROW_RE.match(line)
+        if match is None: return False
+        # Either has internal pipes OR has outer pipes (single column)
+        content = match.group(1)
+        return '|' in content or line.strip().startswith('|')
+    
+    def is_table_separator(self, line: str) -> bool:
+        """Check if line is a table separator row (---, :---, :---:)."""
+        if '|' not in line: return False
+        match = self.TABLE_SEP_RE.match(line)
+        return match is not None
+    
+    def parse_table_row(self, line: str) -> List[str]:
+        """Parse a table row into cells. Handles outer pipes optionally."""
+        # Extract content between optional outer pipes
+        line = line.strip()
+        if line.startswith('|'): line = line[1:]
+        if line.endswith('|'): line = line[:-1]
+        
+        # Split by pipe, handle escaped pipes
+        cells = []
+        current = ""
+        escaped = False
+        for char in line:
+            if escaped:
+                current += char
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == '|':
+                cells.append(current.strip())
+                current = ""
+            else:
+                current += char
+        cells.append(current.strip())
+        return cells
+    
+    def parse_table_alignments(self, line: str) -> List[str]:
+        """Parse separator row to extract column alignments."""
+        cells = self.parse_table_row(line)
+        alignments = []
+        for cell in cells:
+            cell = cell.strip()
+            if cell.startswith(':') and cell.endswith(':'): alignments.append('center')
+            elif cell.endswith(':'): alignments.append('right')
+            else: alignments.append('left')
+        return alignments
+    
+    def _truncate_cell(self, text: str, width: int) -> str:
+        """Truncate text to fit within width, accounting for ANSI codes."""
+        if self.visible_width(text) <= width: return text
+        
+        # Need to truncate - find byte position without breaking ANSI
+        stripped = self.strip_ansi(text)
+        if len(stripped) <= width - 1: return text  # Shouldn't happen but safety check
+        
+        # Truncate stripped text and add ellipsis
+        truncated = stripped[:width - 1] + "…"
+        return truncated
+    
+    def _pad_cell(self, text: str, width: int, align: str) -> str:
+        """Pad or truncate cell content to exact width."""
+        text = self._truncate_cell(text, width)
+        text_width = self.visible_width(text)
+        padding = width - text_width
+        
+        if align == 'right': return " " * padding + text
+        elif align == 'center':
+            left = padding // 2
+            right = padding - left
+            return " " * left + text + " " * right
+        else:  # left
+            return text + " " * padding
+    
+    def format_table(self, rows: List[str]) -> List[str]:
+        """
+        Format a complete table. rows includes header and separator.
+        Returns list of formatted lines.
+        """
+        if len(rows) < 2: return rows  # Not enough for a table
+        
+        # Parse header and separator
+        header_cells = self.parse_table_row(rows[0])
+        alignments = self.parse_table_alignments(rows[1])
+        
+        # Ensure alignment count matches header cells
+        while len(alignments) < len(header_cells): alignments.append('left')
+        alignments = alignments[:len(header_cells)]
+        
+        # Parse data rows
+        data_rows = []
+        for i in range(2, len(rows)):
+            cells = self.parse_table_row(rows[i])
+            # Ensure cell count matches header
+            while len(cells) < len(header_cells): cells.append("")
+            cells = cells[:len(header_cells)]
+            data_rows.append(cells)
+        
+        # Calculate column widths based on content
+        num_cols = len(header_cells)
+        col_widths = [0] * num_cols
+        
+        all_rows = [header_cells] + data_rows
+        for row in all_rows:
+            for i, cell in enumerate(row):
+                # Format cell content for width calculation (apply inline formatting)
+                formatted = self._format_inline(cell)
+                width = self.visible_width(formatted)
+                col_widths[i] = max(col_widths[i], width)
+        
+        # Apply minimum width and calculate total
+        min_col_width = 3
+        col_widths = [max(w, min_col_width) for w in col_widths]
+        
+        # Check terminal width constraint
+        term_width = self._get_terminal_width()
+        # Total = sum of columns + 3 chars per column (space + 2 borders) + 1 for final border
+        total_inner = sum(col_widths)
+        total_width = total_inner + (num_cols * 3) + 1
+        
+        if total_width > term_width:
+            # Need to truncate - reduce widest columns proportionally
+            excess = total_width - term_width
+            # Sort columns by width descending
+            indexed_widths = [(i, w) for i, w in enumerate(col_widths)]
+            indexed_widths.sort(key=lambda x: -x[1])
+            
+            for i, w in indexed_widths:
+                if excess <= 0: break
+                reduction = min(excess, w - min_col_width)
+                col_widths[i] -= reduction
+                excess -= reduction
+        
+        # Build formatted table
+        result = []
+        
+        # Top border
+        border = self.TABLE_TL
+        for i, w in enumerate(col_widths):
+            border += self.TABLE_H * (w + 2)
+            if i < len(col_widths) - 1: border += self.TABLE_TM
+            else: border += self.TABLE_TR
+        result.append(f"{self.DIM}{border}{self.RESET}")
+        
+        # Header row
+        header_line = self.TABLE_V
+        for i, cell in enumerate(header_cells):
+            formatted = self._format_inline(cell)
+            padded = self._pad_cell(formatted, col_widths[i], 'left')
+            header_line += f" {padded} {self.DIM}{self.TABLE_V}{self.RESET}"
+        result.append(header_line)
+        
+        # Separator row
+        sep_line = self.DIM + self.TABLE_ML
+        for i, w in enumerate(col_widths):
+            # w is the content width, we have 2 padding spaces (1 on each side)
+            # so total cell width is w + 2
+            cell_width = w + 2
+            if alignments[i] == 'center':
+                # :<cell_width-2 dashes>:
+                sep_line += f":{self.TABLE_H * (cell_width - 2)}:"
+            elif alignments[i] == 'right':
+                # <cell_width-1 dashes>:
+                sep_line += f"{self.TABLE_H * (cell_width - 1)}:"
+            else:  # left
+                # <cell_width dashes>
+                sep_line += self.TABLE_H * cell_width
+            
+            if i < len(col_widths) - 1:
+                sep_line += self.TABLE_MM
+            else:
+                sep_line += self.TABLE_MR + self.RESET
+        result.append(sep_line)
+        
+        # Data rows
+        for row in data_rows:
+            row_line = self.TABLE_V
+            for i, cell in enumerate(row):
+                formatted = self._format_inline(cell)
+                padded = self._pad_cell(formatted, col_widths[i], alignments[i])
+                row_line += f" {padded} {self.DIM}{self.TABLE_V}{self.RESET}"
+            result.append(row_line)
+        
+        # Bottom border
+        border = self.DIM + self.TABLE_BL
+        for i, w in enumerate(col_widths):
+            border += self.TABLE_H * (w + 2)
+            if i < len(col_widths) - 1: border += self.TABLE_BM
+            else: border += self.TABLE_BR
+        border += self.RESET
+        result.append(border)
+        
+        return result
+    
     def format_block(self, text: str) -> str:
         lines = text.split('\n')
         result_lines = []
         in_code_block = False
         code_indent = ""
+        table_buffer = []
+        in_table = False
+        
+        def flush_table_buffer():
+            """Flush the table buffer, either as formatted table or plain lines."""
+            nonlocal result_lines, table_buffer, in_table
+            if not table_buffer:
+                in_table = False
+                return
+            
+            # Check if we have a valid table (at least header + separator)
+            if len(table_buffer) >= 2 and self.is_table_separator(table_buffer[1]):
+                result_lines.extend(self.format_table(table_buffer))
+            else:
+                # Not a real table, just output buffered lines
+                for bl in table_buffer:
+                    result_lines.append(self.format_line(bl))
+            table_buffer = []
+            in_table = False
         
         for line in lines:
             is_fence, fence_indent = self.detect_code_fence(line)
             
             if is_fence:
+                # Flush any pending table
+                flush_table_buffer()
+                
                 if not in_code_block:
-                    # Starting code block
                     in_code_block = True
                     code_indent = fence_indent
                     result_lines.append(self.format_codeblock_start())
                 else:
-                    # Ending code block
                     result_lines.append(self.format_codeblock_end())
                     in_code_block = False
                     code_indent = ""
             else:
-                formatted = self.format_line(line, mode="codeblock" if in_code_block else "normal", indent=code_indent)
-                result_lines.append(formatted)
+                if in_code_block:
+                    formatted = self.format_line(line, mode="codeblock", indent=code_indent)
+                    result_lines.append(formatted)
+                else:
+                    # Check for table
+                    if self.is_table_row(line):
+                        if not in_table:
+                            in_table = True
+                            table_buffer = [line]
+                        else:
+                            table_buffer.append(line)
+                    else:
+                        if in_table:
+                            # Line breaks table - flush buffer
+                            flush_table_buffer()
+                        
+                        formatted = self.format_line(line)
+                        result_lines.append(formatted)
         
-        # Handle unclosed code block
+        # Handle unclosed structures
+        if in_table:
+            flush_table_buffer()
+        
         if in_code_block: result_lines.append(self.format_codeblock_end())
         
         return '\n'.join(result_lines)
@@ -200,6 +455,11 @@ class StreamingMarkdownRenderer:
         self.line_buffer = ""
         self.in_code_block = False
         self.code_fence_indent = ""
+        
+        # Table state
+        self.in_table = False
+        self.table_buffer = []
+        self.table_provisional_lines = 0
         
         self._term_width = self._get_terminal_width()
         self._provisional_width = 0       # Display columns of provisional output
@@ -250,38 +510,114 @@ class StreamingMarkdownRenderer:
         is_fence, fence_indent = self.formatter.detect_code_fence(line)
         
         if is_fence:
+            # Flush any pending table before code fence
+            if self.in_table:
+                self._flush_table()
+            
             if not self.in_code_block:
-                # Starting code block
                 self.in_code_block = True
                 self.code_fence_indent = fence_indent
                 self._clear_provisional()
                 self._write_formatted(self.formatter.format_codeblock_start())
             else:
-                # Ending code block
                 self._clear_provisional()
                 self._write_formatted(self.formatter.format_codeblock_end())
                 self.in_code_block = False
                 self.code_fence_indent = ""
-        else:
-            # Regular line - clear provisional and rewrite formatted
-            self._clear_provisional()
             
-            formatted = self.formatter.format_line(line, mode="codeblock" if self.in_code_block else "normal", indent=self.code_fence_indent)
-            self._write_formatted(formatted)
+            self.stream.write('\n')
+            self.stream.flush()
+            return
         
-        # Always emit newline after formatted line
-        self.stream.write('\n')
+        if self.in_code_block:
+            # Inside code block - format and output
+            self._clear_provisional()
+            formatted = self.formatter.format_line(line, mode="codeblock", indent=self.code_fence_indent)
+            self._write_formatted(formatted)
+            self.stream.write('\n')
+            self.stream.flush()
+            return
+        
+        # Check for table handling
+        if self.formatter.is_table_row(line):
+            if not self.in_table:
+                # Starting potential table
+                self.in_table = True
+                self.table_buffer = [line]
+                self.table_provisional_lines = 0
+                # Output provisionally
+                self._write_provisional(line + '\n')
+                self.table_provisional_lines += 1
+            else:
+                # Continuing table
+                self.table_buffer.append(line)
+                self._write_provisional(line + '\n')
+                self.table_provisional_lines += 1
+        else:
+            # Not a table row
+            if self.in_table:
+                # Check if we have a valid table
+                if len(self.table_buffer) >= 2 and self.formatter.is_table_separator(self.table_buffer[1]):
+                    self._flush_table()
+                else:
+                    # Not a real table - just clear provisional and output buffered lines formatted
+                    self._clear_provisional()
+                    for bl in self.table_buffer:
+                        formatted = self.formatter.format_line(bl)
+                        self._write_formatted(formatted)
+                        self.stream.write('\n')
+                        self.stream.flush()
+                    self.in_table = False
+                    self.table_buffer = []
+                    self.table_provisional_lines = 0
+                    # Continue to format current line
+                    self._clear_provisional()
+                    formatted = self.formatter.format_line(line)
+                    self._write_formatted(formatted)
+                    self.stream.write('\n')
+                    self.stream.flush()
+            else:
+                # Regular line
+                self._clear_provisional()
+                formatted = self.formatter.format_line(line)
+                self._write_formatted(formatted)
+                self.stream.write('\n')
+                self.stream.flush()
+    
+    def _flush_table(self) -> None:
+        """Clear provisional table lines and output formatted table."""
+        if not self.in_table or len(self.table_buffer) < 2:
+            return
+        
+        # Move cursor up to start of provisional table
+        if self.table_provisional_lines > 0:
+            self.stream.write(self.CURSOR_UP.format(self.table_provisional_lines))
+            self.stream.write('\r')
+        
+        # Clear from cursor to end
+        self.stream.write(self.CLEAR_TO_END)
         self.stream.flush()
+        
+        # Output formatted table
+        formatted_lines = self.formatter.format_table(self.table_buffer)
+        for fl in formatted_lines:
+            self._write_formatted(fl)
+            self.stream.write('\n')
+            self.stream.flush()
+        
+        # Reset state
+        self.in_table = False
+        self.table_buffer = []
+        self.table_provisional_lines = 0
+        self._provisional_width = 0
+        self._provisional_active = False
     
     def _clear_provisional(self) -> None:
         if not self._provisional_active: return
         
         # Calculate how many terminal lines the provisional output occupies
-        # We subtract 1 from width because a line that exactly fills term_width
-        # columns will have wrapped to the next line
         if self._provisional_width == 0: lines_up = 0
         else:
-            # Integer division: (width - 1) // term_width gives 0 for single line
             lines_up = (self._provisional_width - 1) // self._term_width
         
         # Move cursor up to the start of provisional output
@@ -300,6 +636,20 @@ class StreamingMarkdownRenderer:
         self.stream.flush()
     
     def finalize(self) -> None:
+        # Flush any pending table first
+        if self.in_table:
+            if len(self.table_buffer) >= 2 and self.formatter.is_table_separator(self.table_buffer[1]):
+                self._flush_table()
+            else:
+                # Not a real table - output buffered lines
+                for bl in self.table_buffer:
+                    formatted = self.formatter.format_line(bl)
+                    self._write_formatted(formatted)
+                    self.stream.write('\n')
+                    self.stream.flush()
+                self.in_table = False
+                self.table_buffer = []
+        
         # Flush remaining content as final line
         if self.line_buffer: self._flush_line()
         
@@ -314,5 +664,8 @@ class StreamingMarkdownRenderer:
         self.line_buffer = ""
         self.in_code_block = False
         self.code_fence_indent = ""
+        self.in_table = False
+        self.table_buffer = []
+        self.table_provisional_lines = 0
         self._provisional_width = 0
         self._provisional_active = False
