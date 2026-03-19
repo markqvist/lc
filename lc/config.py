@@ -379,4 +379,5 @@ Use the available tools and skills to help the user accomplish their tasks. When
 - Always check file contents before making modifications
 - Confirm destructive operations with the user when appropriate
 - For unpinned skill tools, call `skills.load_skill` first to get documentation
+- To access documentation about `lc` itself, you can invoke `lc --help`, `lc --readme`, `lc --guide`, `lc --examples` (get filesystem path to skill and tool example code) or `lc --docs` (for everything at once)
 """
