@@ -51,6 +51,7 @@ class Config:
             if not "loading" in data: data["loading"] = {}
             if not "logging" in data: data["logging"] = {}
             if not "session" in data: data["session"] = {}
+            if not "display" in data: data["display"] = {}
 
             if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]         = []
             if not data.get("toolkits",  {}).get("directories", {}): data["toolkits"]["directories"]     = []
@@ -66,6 +67,8 @@ class Config:
             if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = True
             if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"] = False
             if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"]  = False
+            
+            if not data.get("display",   {}).get("stream_output", {}): data["display"]["stream_output"]  = False
 
             if not data["stdin"].get("max_text_bytes", {}):   data["stdin"]["max_text_bytes"]   = 16384
             if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512

@@ -31,6 +31,8 @@ class Agent:
         show_reasoning   = session.config.display.get("show_reasoning", True) and output_mode == "tty"
         stream_response  = session.config.display.get("stream_output", False) and output_mode == "tty"
         self.renderer    = TTYRenderer(show_reasoning=show_reasoning, stream_response=stream_response, mode=output_mode)
+        self.show_reasoning  = show_reasoning
+        self.stream_response = stream_response
     
     def run_turn(self, user_input: str, checkpoint_callback: Callable = None) -> str:
         if checkpoint_callback: checkpoint_callback()
@@ -88,7 +90,8 @@ class Agent:
         self.renderer.display_connecting()
         
         try:
-            response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=self._got_chunk)
+            if self.stream_response: response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=self._got_chunk)
+            else:                    response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=None)
             return response
 
         except Exception as e: raise e

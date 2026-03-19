@@ -773,6 +773,7 @@ def main() -> int:
                 return 1
             
             if not args.interactive:
+                if config.display["stream_output"] == True: print("")
                 return 0
         
         # Interactive mode

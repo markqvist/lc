@@ -3,7 +3,6 @@
 import sys
 import re
 import time
-import RNS
 import random
 from typing import Optional
 
@@ -43,6 +42,7 @@ class TTYRenderer:
         self._spinner_shown = False
         self._last_streamed = None
         self._last_frame = 0
+        self._final = ""
 
     def _is_tty(self) -> bool:
         return self.mode == "tty"
@@ -64,11 +64,16 @@ class TTYRenderer:
         if self.show_reasoning and self._in_reasoning:
             self._in_reasoning = False
             self.write(f"{self.RESET}\n", end="")
+            if not self.stream_response: self.write("\n", end="")
 
     def _guard_reasoning(self):
         if self.show_reasoning and self._in_reasoning:
             self.end_reasoning()
             self.write("\n", end="")
+
+        if self.show_reasoning == False and self._in_reasoning:
+            self._in_reasoning = False
+            self.write(f"{self.RESET}\r{self.CLEAR_LINE}", end="")
 
     def _guard_content(self):
         if self._last_streamed == "content":
@@ -86,7 +91,7 @@ class TTYRenderer:
     def display_reasoning_content(self, content: str) -> None:
         if self.show_reasoning and not self.stream_response and content:
             self.start_reasoning()
-            self.write(f"\n{content.lstrip().rstrip()}", end="")
+            self.write(f"{content.lstrip().rstrip()}", end="")
             self.end_reasoning()
             self._reasoning_content = content
     
@@ -108,6 +113,7 @@ class TTYRenderer:
 
     def display_tool_call(self, tool_name: str, arguments: dict) -> None:
         if not self._is_tty(): return
+        if not self.stream_response: self.clear_thinking()
         self._guard_preparing()
         self._guard_reasoning()
         self._guard_content()
@@ -137,20 +143,11 @@ class TTYRenderer:
         display = self._compact_multiline(result)
         self.write(f"\n{self.GREEN}✓ Result: {self.RESET} {display}{self.RESET}\n\n")
 
-    def _compact_multiline(self, text):
+    def _compact_multiline(self, text, limit=384):
+        display = text
+        if len(display) > limit: display = f"{display[:limit-1]}…"
         lsep = f"{self.DIM}\\{self.RESET}"
-        display = f"{lsep}".join(text.rstrip().splitlines())
-        limit = 384
-        if len(display) > limit:
-            display = f"{display[:limit-1]}"
-            found_non_printable = 0; pos = 0;
-            for char in reversed(display[-5:]):
-                pos += 1
-                if not char.isprintable() and char != '\n': found_non_printable = pos
-
-            if found_non_printable: display = display[:-pos]
-            display = f"{display}…"
-
+        display = f"{lsep}".join(display.rstrip().splitlines())
         return display
     
     def display_error(self, message: str) -> None:
@@ -191,6 +188,7 @@ class TTYRenderer:
                 if time.time() > self._last_frame + self.FRAME_INTERVAL:
                     self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
                     self._last_frame = time.time()
+                    self._in_reasoning = True
 
         else:
             if time.time() > self._last_frame + self.FRAME_INTERVAL:
@@ -215,11 +213,15 @@ class TTYRenderer:
     def display_response(self, content: str, reasoning_content: Optional[str] = None) -> None:
         if self._is_tty():
             if reasoning_content and self.show_reasoning: self.display_reasoning_content(reasoning_content)
-            if content and not self.stream_response:      self.write(f"\n{content}", end="\n")
+            if content and not self.stream_response:
+                self.clear_thinking()
+                self.write(f"{content}", end="\n\n")
 
         # Pipe mode: Final, raw output only
         else:
-            if content: self.write(self._stdout_sanitize(content).rstrip(), end="\n")
+            if content:
+                self._final = self._stdout_sanitize(content).rstrip()
+                self.write(self._final, end="\n")
     
     def format_markdown(self, text: str) -> str:
         # MVP: return as-is
