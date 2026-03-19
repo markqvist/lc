@@ -31,8 +31,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("-l", "--list-sessions", action="store_true", help="List available sessions and exit")
     parser.add_argument("-S", "--inspect-session", type=str, metavar="ID|PATH", help="Inspect session by ID/name or path to msgpack file")
     parser.add_argument("-f", "--follow", action="store_true", help="Follow session updates (stream mode, use with --inspect-session)")
+    parser.add_argument("--docs", action="store_true", help="Display essential documentation for lc")
     parser.add_argument("--readme", action="store_true", help="Display the readme")
     parser.add_argument("--guide", action="store_true", help="Display the guide")
+    parser.add_argument("--examples", action="store_true", help="Display path to example skills and tools code")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("--version", action="version", version=f"%(prog)s {Session.get_version()}")
     
@@ -705,13 +707,21 @@ def main() -> int:
     config_path = resolve_config_path(args.config)
 
     try:
+        if args.docs:
+            args.readme = True
+            args.guide = True
+            args.examples = True
+
         if args.readme:
             with open(data_path("README.md"), "rb") as fh: print(fh.read().decode("utf-8"))
-            return 0
-
         if args.guide:
             with open(data_path("GUIDE.md"), "rb") as fh: print(fh.read().decode("utf-8"))
-            return 0
+        
+        if args.examples:
+            examples_path = data_path("examples")
+            print(f"Example code for skills and toolkits can be found at:\n{examples_path}")
+
+        if args.readme or args.guide or args.examples: return 0
 
     except Exception as e:
         print("Error while loading documentation")
