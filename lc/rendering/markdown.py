@@ -6,7 +6,6 @@ from typing import Optional, TextIO
 
 try:
     import wcwidth
-    
     def display_width(text: str) -> int:
         """Calculate display width using wcwidth."""
         # wcswidth returns -1 for non-printable strings, fallback to len
