@@ -29,7 +29,8 @@ class Agent:
         self.can_prompt  = can_prompt
         self.output_mode = output_mode
         show_reasoning   = session.config.display.get("show_reasoning", True) and output_mode == "tty"
-        self.renderer    = TTYRenderer(show_reasoning=show_reasoning, mode=output_mode)
+        stream_response  = session.config.display.get("stream_output", False) and output_mode == "tty"
+        self.renderer    = TTYRenderer(show_reasoning=show_reasoning, stream_response=stream_response, mode=output_mode)
     
     def run_turn(self, user_input: str, checkpoint_callback: Callable = None) -> str:
         if checkpoint_callback: checkpoint_callback()
@@ -76,17 +77,21 @@ class Agent:
 
         return tools
     
+    def _got_chunk(self, type, delta):
+        if   type == "reasoning": self.renderer.display_thinking(delta)
+        elif type == "content"  : self.renderer.stream_chunk(delta)
+        elif type == "tool_call": self.renderer.display_prepare_tool()
+        elif type == "status":
+            if delta == "request_sent": self.renderer.display_connected()
+
     def _call_model(self, tools: List[Dict[str, Any]]) -> Dict[str, Any]:
-        self.renderer.display_thinking()
+        self.renderer.display_connecting()
         
         try:
-            response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None)
-            self.renderer.clear_thinking()
+            response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=self._got_chunk)
             return response
 
-        except Exception as e:
-            self.renderer.clear_thinking()
-            raise e
+        except Exception as e: raise e
     
     def _process_response(self, response: Dict[str, Any], checkpoint_callback: Callable = None) -> str:
         message = response.get("message", {})
@@ -98,6 +103,10 @@ class Agent:
             
             assistant_msg = { "role": "assistant", "content": content, "tool_calls": tool_calls }
             self.session.conversation.append(assistant_msg)
+
+            content = message.get("content", "")
+            reasoning_content = message.get("reasoning_content", "")
+            self.renderer.display_response(content, reasoning_content)
 
             multimodal_content = []
             for tool_call in tool_calls:
