@@ -43,6 +43,7 @@ class TTYRenderer:
 
     def __init__(self, stream=None, show_reasoning: bool = True, stream_response: bool = False, 
                  mode: str = "tty", render_markdown: bool = True):
+
         self.stream = stream or sys.stdout
         self.mode = mode
         self.show_reasoning = show_reasoning and (mode == "tty")
@@ -65,16 +66,14 @@ class TTYRenderer:
             self._md_formatter = MarkdownFormatter()
             self._md_streamer = StreamingMarkdownRenderer(self._md_formatter, self.stream)
     
-    def _is_tty(self) -> bool:
-        return self.mode == "tty"
+    def _is_tty(self) -> bool: return self.mode == "tty"
+    
+    def write_line(self, text: str = "") -> None: self.write(text, end="\n")
     
     def write(self, text: str, end: str = "") -> None:
         self.stream.write(text + end)
         self.stream.flush()
-    
-    def write_line(self, text: str = "") -> None:
-        self.write(text, end="\n")
-    
+        
     def start_reasoning(self) -> None:
         if self.show_reasoning and not self._in_reasoning:
             self._in_reasoning = True
@@ -85,8 +84,7 @@ class TTYRenderer:
         if self.show_reasoning and self._in_reasoning:
             self._in_reasoning = False
             self.write(f"{self.RESET}\n", end="")
-            if not self.stream_response: 
-                self.write("\n", end="")
+            if not self.stream_response: self.write("\n", end="")
 
     def _guard_reasoning(self):
         if self.show_reasoning and self._in_reasoning:
@@ -118,40 +116,31 @@ class TTYRenderer:
             self._reasoning_content = content
     
     # Stream a chunk of reasoning content.
-    # For future streaming implementation.
     # Called repeatedly as reasoning chunks arrive.
     def stream_reasoning_chunk(self, chunk: str) -> None:
         if self.show_reasoning:
-            if not self._in_reasoning: 
-                self.start_reasoning()
+            if not self._in_reasoning: self.start_reasoning()
             self.write(chunk, end="")
             self._last_streamed = "reasoning"
 
     def stream_chunk(self, chunk: str) -> None:
         """Stream a content chunk with optional markdown formatting."""
-        if self._spinner_shown: 
-            self.clear_thinking()
+        if self._spinner_shown: self.clear_thinking()
         self._guard_reasoning()
         
-        if self._render_markdown and self._md_streamer:
-            self._md_streamer.ingest(chunk)
-        else:
-            self.write(chunk, end="")
+        if self._render_markdown and self._md_streamer: self._md_streamer.ingest(chunk)
+        else:                                           self.write(chunk, end="")
         
         self._last_streamed = "content"
     
     def finalize_stream(self) -> None:
-        """Finalize streaming output, flushing any markdown buffers."""
         if self._render_markdown and self._md_streamer:
             self._md_streamer.finalize()
-            # Reset for next response
             self._md_streamer.reset()
 
     def display_tool_call(self, tool_name: str, arguments: dict) -> None:
-        if not self._is_tty(): 
-            return
-        if not self.stream_response: 
-            self.clear_thinking()
+        if not self._is_tty(): return
+        if not self.stream_response: self.clear_thinking()
         self._guard_preparing()
         self._guard_reasoning()
         self._guard_content()
@@ -161,25 +150,21 @@ class TTYRenderer:
         if arguments:
             for key, value in arguments.items():
                 display_value = str(value)
-                if tool_name in truncate_for: 
-                    display_value = self._compact_multiline(display_value)
+                if tool_name in truncate_for: display_value = self._compact_multiline(display_value)
                 self.write(f" {self.DIM}{key}:{self.RESET} {display_value}", end="")
 
         self.write("")
     
     def display_tool_result(self, result: str, modality: str = "text") -> None:
-        if not self._is_tty(): 
-            return
+        if not self._is_tty(): return
         self._guard_reasoning()
         self._guard_content()
         
         # Handle non-text modalities with placeholder
         if modality != "text":
             is_error = result.startswith("Error:") or result.startswith("[Invalid") or result.startswith("[Could not")
-            if is_error: 
-                self.write(f"\n{self.RED}✗ Result:{self.RESET} {result}\n")
-            else:        
-                self.write(f"\n{self.GREEN}✓ Result:{self.RESET} ({modality} data)\n")
+            if is_error: self.write(f"\n{self.RED}✗ Result:{self.RESET} {result}\n")
+            else:        self.write(f"\n{self.GREEN}✓ Result:{self.RESET} ({modality} data)\n")
             return
         
         display = self._compact_multiline(result)
@@ -187,35 +172,30 @@ class TTYRenderer:
 
     def _compact_multiline(self, text, limit=384):
         display = text
-        if len(display) > limit: 
-            display = f"{display[:limit-1]}…"
+        if len(display) > limit: display = f"{display[:limit-1]}…"
         lsep = f"{self.DIM}\\{self.RESET}"
         display = f"{lsep}".join(display.rstrip().splitlines())
         return display
     
     def display_error(self, message: str) -> None:
-        if not self._is_tty(): 
-            return
+        if not self._is_tty(): return
         self._guard_reasoning()
         self.write(f"\n{self.RED}✗ Error: {message}{self.RESET}\n")
 
     def display_connecting(self) -> None:
-        if not self._is_tty(): 
-            return
+        if not self._is_tty(): return
         self._guard_reasoning()
         self._spinner_shown = True
         self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Processing request...", end="")
 
     def display_connected(self) -> None:
-        if not self._is_tty(): 
-            return
+        if not self._is_tty(): return
         self._guard_reasoning()
         self._spinner_shown = True
         self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Processing prompt...", end="")
 
     def display_prepare_tool(self) -> None:
-        if not self._is_tty(): 
-            return
+        if not self._is_tty(): return
         self._guard_reasoning()
         self._guard_content()
         spinner = random.choice(SPINNER_FRAMES)
@@ -226,13 +206,11 @@ class TTYRenderer:
             self._last_frame = time.time()
 
     def display_thinking(self, delta) -> None:
-        if not self._is_tty(): 
-            return
+        if not self._is_tty(): return
         spinner = random.choice(SPINNER_FRAMES)
         self._spinner_shown = True
         if self.stream_response:
-            if self.show_reasoning: 
-                self.stream_reasoning_chunk(delta)
+            if self.show_reasoning: self.stream_reasoning_chunk(delta)
             else:
                 if time.time() > self._last_frame + self.FRAME_INTERVAL:
                     self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
@@ -240,16 +218,15 @@ class TTYRenderer:
                     self._in_reasoning = True
         else:
             if time.time() > self._last_frame + self.FRAME_INTERVAL:
-                if self.show_reasoning: 
-                    self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
-                else:                   
-                    self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
+                if self.show_reasoning: self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
+                else:                   self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
                 self._last_frame = time.time()
 
     def clear_thinking(self) -> None:
         if not self._is_tty():
             self._spinner_shown = False
             return
+
         if self._spinner_shown:
             self.write(self.CLEAR_LINE, end="\r")
             self._spinner_shown = False
@@ -258,16 +235,12 @@ class TTYRenderer:
     
     def _stdout_sanitize(self, text: str) -> str:
         strip_ansi = False
-        if strip_ansi: 
-            return self.ANSI_PATTERN.sub('', text)
-        else:          
-            return text
+        if strip_ansi: return self.ANSI_PATTERN.sub('', text)
+        else:          return text
 
     def display_response(self, content: str, reasoning_content: Optional[str] = None) -> None:
-        """Display final response with optional markdown formatting."""
         if self._is_tty():
-            if reasoning_content and self.show_reasoning: 
-                self.display_reasoning_content(reasoning_content)
+            if reasoning_content and self.show_reasoning: self.display_reasoning_content(reasoning_content)
             
             if content and not self.stream_response:
                 self.clear_thinking()
@@ -275,8 +248,8 @@ class TTYRenderer:
                 if self._render_markdown and self._md_formatter:
                     formatted = self._md_formatter.format_block(content)
                     self.write(f"{formatted}", end="\n\n")
-                else:
-                    self.write(f"{content}", end="\n\n")
+                
+                else: self.write(f"{content}", end="\n\n")
 
         # Pipe mode: Final, raw output only
         else:
@@ -285,9 +258,7 @@ class TTYRenderer:
                 self.write(self._final, end="\n")
     
     def format_markdown(self, text: str) -> str:
-        """Format markdown text to ANSI (public utility method)."""
-        if self._render_markdown and self._md_formatter:
-            return self._md_formatter.format_block(text)
+        if self._render_markdown and self._md_formatter: return self._md_formatter.format_block(text)
         return text
 
 
