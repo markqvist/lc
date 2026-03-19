@@ -90,11 +90,19 @@ class Agent:
         self.renderer.display_connecting()
         
         try:
-            if self.stream_response: response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=self._got_chunk)
-            else:                    response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=None)
+            if self.stream_response:
+                response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=self._got_chunk)
+                # Finalize streaming to flush markdown buffers
+                self.renderer.finalize_stream()
+            else:
+                response = self.model.complete(messages=self.session.conversation, tools=tools if tools else None, chunk_callback=None)
             return response
 
-        except Exception as e: raise e
+        except Exception as e:
+            # Ensure stream is finalized even on error
+            if self.stream_response:
+                self.renderer.finalize_stream()
+            raise e
     
     def _process_response(self, response: Dict[str, Any], checkpoint_callback: Callable = None) -> str:
         message = response.get("message", {})
