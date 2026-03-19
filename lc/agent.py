@@ -13,15 +13,15 @@ if TYPE_CHECKING: from lc.session import Session
 
 
 class Agent:
-    """Core agent orchestrating model interaction and tool execution."""
-    
-    # Gate level descriptions for user display
+
     GATE_DESCRIPTIONS = { 0: "read-only operations",
                           1: "file write operations",
                           2: "command execution (read-only)",
                           3: "destructive/destructive execution" }
     
-    def __init__(self, session: "Session", model_backend, toolkits: Dict[str, Any], gate_level: Optional[int] = None, can_prompt: bool = False, output_mode: str = "tty"):
+    def __init__(self, session: "Session", model_backend, toolkits: Dict[str, Any], gate_level: Optional[int] = None, can_prompt: bool = False,
+                 disable_markdown=False, output_mode: str = "tty"):
+
         self.session     = session
         self.model       = model_backend
         self.toolkits    = toolkits
@@ -30,9 +30,11 @@ class Agent:
         self.output_mode = output_mode
         show_reasoning   = session.config.display.get("show_reasoning", True) and output_mode == "tty"
         stream_response  = session.config.display.get("stream_output", False) and output_mode == "tty"
-        self.renderer    = TTYRenderer(show_reasoning=show_reasoning, stream_response=stream_response, mode=output_mode)
+        render_markdown  = session.config.display.get("render_markdown", False) and output_mode == "tty" and not disable_markdown
+        self.renderer    = TTYRenderer(show_reasoning=show_reasoning, stream_response=stream_response, mode=output_mode, render_markdown=render_markdown)
         self.show_reasoning  = show_reasoning
         self.stream_response = stream_response
+        self.render_markdown = render_markdown
     
     def run_turn(self, user_input: str, checkpoint_callback: Callable = None) -> str:
         if checkpoint_callback: checkpoint_callback()

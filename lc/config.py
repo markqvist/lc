@@ -53,22 +53,23 @@ class Config:
             if not "session" in data: data["session"] = {}
             if not "display" in data: data["display"] = {}
 
-            if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]         = []
-            if not data.get("toolkits",  {}).get("directories", {}): data["toolkits"]["directories"]     = []
-            if not data.get("resolvers", {}).get("builtin",     {}): data["resolvers"]["builtin"]        = []
-            if not data.get("resolvers", {}).get("directories", {}): data["resolvers"]["directories"]    = []
-            if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"]       = []
-            if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]            = []
-            if not data.get("models",    {}).get("default",     {}): data["models"]["default"]           = "primary"
-            if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]            = 4
-            if not data.get("session",   {}).get("lock_timeout",{}): data["session"]["lock_timeout"]     = 10800
+            if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]             = []
+            if not data.get("toolkits",  {}).get("directories", {}): data["toolkits"]["directories"]         = []
+            if not data.get("resolvers", {}).get("builtin",     {}): data["resolvers"]["builtin"]            = []
+            if not data.get("resolvers", {}).get("directories", {}): data["resolvers"]["directories"]        = []
+            if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"]           = []
+            if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]                = []
+            if not data.get("models",    {}).get("default",     {}): data["models"]["default"]               = "primary"
+            if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]                = 4
+            if not data.get("session",   {}).get("lock_timeout",{}): data["session"]["lock_timeout"]         = 10800
             
-            if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]    = True
-            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]     = True
-            if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"] = False
-            if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"]  = False
+            if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]        = True
+            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]         = True
+            if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"]     = False
+            if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"]      = False
             
-            if not data.get("display",   {}).get("stream_output", {}): data["display"]["stream_output"]  = False
+            if not data.get("display",   {}).get("stream_output",   {}): data["display"]["stream_output"]    = True
+            if not data.get("display",   {}).get("render_markdown", {}): data["display"]["render_markdown"]  = True
 
             if not data["stdin"].get("max_text_bytes", {}):   data["stdin"]["max_text_bytes"]   = 16384
             if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
@@ -323,23 +324,24 @@ DEFAULT_CONFIG = """
 [loading]
   # You can control skill and tool loading
   # behaviour defaults.
-  user_skills = true
-  user_tools = true
+  user_skills = yes
+  user_tools = yes
 
   # Project tools and skills look for a
   # local .lc folder in the current working
   # directory, and load from here if available
   # and enabled.
-  project_skills = false
-  project_tools = false
+  project_skills = no
+  project_tools = no
 
 [session]
-  persistence = true
+  persistence = yes
   lock_timeout = 10800
 
 [display]
-  show_reasoning = true
-  stream_output = true
+  show_reasoning = yes
+  stream_output = yes
+  render_markdown = yes
 
 [stdin]
   # Truncation limits for piped data.

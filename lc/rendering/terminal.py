@@ -10,15 +10,6 @@ from .markdown import MarkdownFormatter, StreamingMarkdownRenderer
 
 
 class TTYRenderer:
-    """
-    Terminal output renderer with optional markdown formatting.
-    
-    Handles both streaming and non-streaming output modes,
-    with support for reasoning display, tool output, and
-    elegant markdown rendering when enabled.
-    """
-
-    # ANSI codes
     RESET = "\033[0m"
     BOLD = "\033[1m"
     DIM = "\033[2m"
@@ -57,8 +48,7 @@ class TTYRenderer:
         self._last_streamed = None
         self._last_frame = 0
         self._final = ""
-        
-        # Initialize markdown components if enabled
+
         self._md_formatter: Optional[MarkdownFormatter] = None
         self._md_streamer: Optional[StreamingMarkdownRenderer] = None
         
@@ -124,7 +114,6 @@ class TTYRenderer:
             self._last_streamed = "reasoning"
 
     def stream_chunk(self, chunk: str) -> None:
-        """Stream a content chunk with optional markdown formatting."""
         if self._spinner_shown: self.clear_thinking()
         self._guard_reasoning()
         

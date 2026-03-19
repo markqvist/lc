@@ -91,7 +91,7 @@ class Session:
     SESSION_IDLE             = -1
     LOCK_EXT                 = ".lock"
     
-    def __init__(self, config: Config, session_id: Optional[str] = None, session_name: Optional[str] = None):
+    def __init__(self, config: Config, session_id: Optional[str] = None, session_name: Optional[str] = None, disable_markdown: bool = False):
         self.config = config
         self.degraded = False
         self.session_id = session_id or str(uuid.uuid4())
@@ -123,6 +123,7 @@ class Session:
         self.model_override: Optional[str] = None
         self.session_file_path = None
         self._is_resumed = False
+        self._disable_markdown = disable_markdown
     
     @classmethod
     def get_version(cls) -> str:
@@ -130,8 +131,8 @@ class Session:
         return __version__
     
     @classmethod
-    def create(cls, config: Config, session_name: Optional[str] = None, model_override: Optional[str] = None) -> "Session":
-        session = cls(config, session_name=session_name)
+    def create(cls, config: Config, session_name: Optional[str] = None, disable_markdown: bool = False, model_override: Optional[str] = None) -> "Session":
+        session = cls(config, session_name=session_name, disable_markdown=disable_markdown)
         session.model_override = model_override
         session._initialize()
         session.save()
@@ -141,12 +142,13 @@ class Session:
     @classmethod
     def create_or_resume(cls,  config: Config,  resume: bool = False,  session_id: Optional[str] = None,
                          session_name: Optional[str] = None, rebuild_system_prompt: bool = False,
-                         model_override: Optional[str] = None) -> "Session":
+                         disable_markdown: bool = False, model_override: Optional[str] = None) -> "Session":
 
         if resume or session_id:
             existing = cls.load(config, session_id, rebuild_system_prompt=rebuild_system_prompt)
             if existing: 
                 existing._is_resumed = True
+                existing._disable_markdown = disable_markdown
                 # CLI flag takes precedence over saved session model
                 # If CLI flag provided, update session for future resumptions
                 if model_override is not None: existing.model_override = model_override
@@ -154,7 +156,7 @@ class Session:
 
             elif session_id: raise ValueError(f"Session not found: {session_id}")
         
-        return cls.create(config, session_name=session_name, model_override=model_override)
+        return cls.create(config, session_name=session_name, disable_markdown=disable_markdown, model_override=model_override)
     
     @classmethod
     def load(cls,  config: Config,  session_id: Optional[str] = None, rebuild_system_prompt: bool = False) -> Optional["Session"]:
@@ -567,7 +569,9 @@ class Session:
                 model_backend = self._create_model_backend()
                 toolkits = self._load_toolkits()
 
-                agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt, output_mode=output_mode)
+                agent = Agent(session=self, model_backend=model_backend, toolkits=toolkits, gate_level=gate_level, can_prompt=can_prompt,
+                              output_mode=output_mode, disable_markdown=self._disable_markdown)
+
                 output = agent.run_turn(command, checkpoint_callback=self.save)
 
                 self.turn_count += 1

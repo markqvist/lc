@@ -31,6 +31,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("-l", "--list-sessions", action="store_true", help="List available sessions and exit")
     parser.add_argument("-S", "--inspect-session", type=str, metavar="ID|PATH", help="Inspect session by ID/name or path to msgpack file")
     parser.add_argument("-f", "--follow", action="store_true", help="Follow session updates (stream mode, use with --inspect-session)")
+    parser.add_argument("-M", "--no-markdown", action="store_true", help="Disable markdown rendering, even if enabled in config")
     parser.add_argument("--docs", action="store_true", help="Display essential documentation for lc")
     parser.add_argument("--readme", action="store_true", help="Display the readme")
     parser.add_argument("--guide", action="store_true", help="Display the guide")
@@ -772,7 +773,7 @@ def main() -> int:
             return 1
         
         session = Session.create_or_resume(config=config, resume=args.resume or bool(args.session_id), session_id=args.session_id,
-                                           session_name=args.name, rebuild_system_prompt=args.rebuild,
+                                           session_name=args.name, rebuild_system_prompt=args.rebuild, disable_markdown=args.no_markdown,
                                            model_override=args.model)
 
         if command:
