@@ -36,3 +36,40 @@ class TestTools(Toolkit):
             Product as string
         """
         return str(x * y)
+
+    @tool(gate_level=0, modality="image")
+    def read_image(self, path: str) -> str:
+        """
+        Example of reading an image file and returning base64-
+        encoded data in image modality for vision-capable models.
+        
+        Args:
+            path: Path to the image file
+        
+        Returns:
+            Base64-encoded image data with mime type prefix
+        """
+        
+        import base64
+        
+        try:
+            file_path = Path(path).expanduser()
+            if not file_path.exists(): return f"Error: File not found: {path}"
+            
+            # Detect mime type
+            suffix = file_path.suffix.lower()
+            mime_types = { '.png': 'image/png',
+                           '.jpg': 'image/jpeg',
+                           '.jpeg': 'image/jpeg',
+                           '.gif': 'image/gif',
+                           '.webp': 'image/webp' }
+
+            mime_type = mime_types.get(suffix, 'image/png')
+            
+            # Read and encode
+            image_data = file_path.read_bytes()
+            encoded = base64.b64encode(image_data).decode('utf-8')
+            
+            return f"data:{mime_type};base64,{encoded}"
+            
+        except Exception as e: return f"Error reading image: {e}"
