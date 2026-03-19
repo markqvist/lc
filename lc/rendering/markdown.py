@@ -4,18 +4,12 @@ import re
 import shutil
 from typing import Optional, TextIO
 
-try:
-    import wcwidth
-    def display_width(text: str) -> int:
-        """Calculate display width using wcwidth."""
-        # wcswidth returns -1 for non-printable strings, fallback to len
-        w = wcwidth.wcswidth(text)
-        return w if w is not None and w >= 0 else len(text)
-
-except ImportError:
-    # Fallback if wcwidth not available (should not happen, will be vendored)
-    def display_width(text: str) -> int: return len(text)
-
+from lc.vendor import wcwidth
+def display_width(text: str) -> int:
+    # wcswidth returns -1 for non-printable strings,
+    # fallback to len in this case
+    w = wcwidth.wcswidth(text)
+    return w if w is not None and w >= 0 else len(text)
 
 class MarkdownFormatter:
     # ANSI escape sequences

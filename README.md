@@ -412,10 +412,11 @@ Found a bug? Have an improvement? Send me a patch over LXMF. No, I don't use Git
 
 ## Acknowledgments
 
-- To [ConfigObj](https://github.com/DiffSK/configobj) ([BSD 3 Clause License](./lc/CONFIGOBJ_LICENSE.txt))
-- To [Jinja2](https://github.com/pallets/jinja) ([BSD 3 Clause License](./lc/vendor/jinja2/LICENSE.txt))
-- To the open-source LLM community, for making local inference viable
-- To the reader, for getting this far without rolling their eyes too hard
+- [ConfigObj](https://github.com/DiffSK/configobj) ([BSD 3 Clause License](./lc/CONFIGOBJ_LICENSE.txt))
+- [Jinja2](https://github.com/pallets/jinja) ([BSD 3 Clause License](./lc/vendor/jinja2/LICENSE.txt))
+- [wcwidth](https://github.com/jquast/wcwidth) ([MIT License](./lc/vendor/wcwidth/LICENSE.txt))
+- The open-source LLM community, for making local inference viable
+- The reader, for getting this far without rolling their eyes too hard
 
 ---
 
