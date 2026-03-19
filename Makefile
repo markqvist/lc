@@ -10,8 +10,8 @@ clean:
 	@-rm -rf ./__pycache__
 	@-rm -rf ./lc/__pycache__
 	@-rm -rf ./*.egg-info
-	@-rm -rf ./lc/data/*.md
-	@-rm -rf ./lc/data/examples
+	# @-rm -rf ./lc/data/*.md
+	# @-rm -rf ./lc/data/examples
 	@echo Done
 
 assets:

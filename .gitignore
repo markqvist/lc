@@ -3,8 +3,6 @@
 .venv
 build
 dist
-lc/data/*.md
-lc/data/examples
 ***/logs
 ***/cache
 ***/cache_youtube
