@@ -77,9 +77,9 @@ class Config:
             if isinstance(data["toolkits"]["directories"],  str): data["toolkits"]["directories"]  = [data["toolkits"]["directories"]]
             if isinstance(data["resolvers"]["directories"], str): data["resolvers"]["directories"] = [data["resolvers"]["directories"]]
 
-            if isinstance(data["skills"]["pinned"]     ,    str): data["skills"]["pinned"]         = [data["skills"]["pinned"]]
-            if isinstance(data["toolkits"]["builtin"]     ,  str): data["toolkits"]["builtin"]     = [data["toolkits"]["builtin"]]
-            if isinstance(data["resolvers"]["builtin"]     , str): data["resolvers"]["builtin"]    = [data["resolvers"]["builtin"]]
+            if isinstance(data["skills"]["pinned"],         str): data["skills"]["pinned"]         = [data["skills"]["pinned"]]
+            if isinstance(data["toolkits"]["builtin"],      str): data["toolkits"]["builtin"]      = [data["toolkits"]["builtin"]]
+            if isinstance(data["resolvers"]["builtin"],     str): data["resolvers"]["builtin"]     = [data["resolvers"]["builtin"]]
 
             validation = data.validate(Validator())
 
