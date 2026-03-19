@@ -107,6 +107,7 @@ class TTYRenderer:
     # For MVP: just write directly
     # Future: accumulate, format on boundaries
     def stream_chunk(self, chunk: str) -> None:
+        if self._spinner_shown: self.clear_thinking()
         self._guard_reasoning()
         self.write(chunk, end="")
         self._last_streamed = "content"
