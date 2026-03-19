@@ -241,9 +241,11 @@ class StreamingMarkdownRenderer:
     - Code blocks detected and styled progressively
     """
     
-    CLEAR_LINE = "\x1b[2K"
-    MOVE_UP = "\033[A"
-    CARRIAGE_RETURN = "\r"
+    # ANSI control sequences
+    CLEAR_LINE = "\x1b[2K"          # Erase entire line
+    SAVE_CURSOR = "\x1b[s"          # SCP - Save Cursor Position
+    RESTORE_CURSOR = "\x1b[u"       # RCP - Restore Cursor Position
+    CLEAR_TO_END = "\x1b[J"         # ED0 - Erase from cursor to end of screen
     
     def __init__(self, formatter: MarkdownFormatter, stream: TextIO):
         self.formatter = formatter
@@ -252,7 +254,7 @@ class StreamingMarkdownRenderer:
         self.in_code_block = False
         self.code_fence_indent = ""
         self.code_block_started = False  # Track if we've output the top border
-        self._current_line_provisional = False
+        self._cursor_saved = False       # Cursor position saved for current line
     
     def ingest(self, chunk: str) -> None:
         """
@@ -276,16 +278,24 @@ class StreamingMarkdownRenderer:
                 break
     
     def _write_provisional(self, text: str) -> None:
-        """Write unformatted text provisionally."""
+        """
+        Write unformatted text provisionally.
+        
+        Saves cursor position before first write of each line
+        to enable complete clearing of wrapped content on flush.
+        """
+        if text and not self._cursor_saved:
+            self.stream.write(self.SAVE_CURSOR)
+            self._cursor_saved = True
         self.stream.write(text)
         self.stream.flush()
-        self._current_line_provisional = True
     
     def _flush_line(self) -> None:
         """
         Flush the current line buffer with proper formatting.
         
-        Clears provisional output and rewrites with ANSI formatting.
+        Clears provisional output (including wrapped lines) and rewrites
+        with ANSI formatting.
         """
         line = self.line_buffer
         self.line_buffer = ""
@@ -298,25 +308,18 @@ class StreamingMarkdownRenderer:
                 # Starting code block
                 self.in_code_block = True
                 self.code_fence_indent = fence_indent
-                # Clear any provisional output and emit top border
-                if self._current_line_provisional:
-                    self._clear_current_line()
+                self._clear_provisional()
                 self._write_formatted(self.formatter.format_codeblock_start())
-                self._current_line_provisional = False
             else:
                 # Ending code block
-                # Clear provisional, emit bottom border
-                if self._current_line_provisional:
-                    self._clear_current_line()
+                self._clear_provisional()
                 self._write_formatted(self.formatter.format_codeblock_end())
                 self.in_code_block = False
                 self.code_fence_indent = ""
                 self.code_block_started = False
-                self._current_line_provisional = False
         else:
             # Regular line - clear provisional and rewrite formatted
-            if self._current_line_provisional:
-                self._clear_current_line()
+            self._clear_provisional()
             
             formatted = self.formatter.format_line(
                 line,
@@ -324,16 +327,21 @@ class StreamingMarkdownRenderer:
                 indent=self.code_fence_indent
             )
             self._write_formatted(formatted)
-            self._current_line_provisional = False
         
         # Always emit newline after formatted line
         self.stream.write('\n')
         self.stream.flush()
     
-    def _clear_current_line(self) -> None:
-        """Clear the current terminal line."""
-        self.stream.write(self.CARRIAGE_RETURN + self.CLEAR_LINE)
-        self.stream.flush()
+    def _clear_provisional(self) -> None:
+        """
+        Clear all provisional output including wrapped lines.
+        
+        Restores cursor to saved position and clears to end of screen,
+        ensuring complete removal of any wrapped content.
+        """
+        if self._cursor_saved:
+            self.stream.write(self.RESTORE_CURSOR + self.CLEAR_TO_END)
+            self._cursor_saved = False
     
     def _write_formatted(self, text: str) -> None:
         """Write formatted text."""
@@ -363,4 +371,4 @@ class StreamingMarkdownRenderer:
         self.in_code_block = False
         self.code_fence_indent = ""
         self.code_block_started = False
-        self._current_line_provisional = False
+        self._cursor_saved = False
