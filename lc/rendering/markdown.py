@@ -501,7 +501,7 @@ class StreamingMarkdownRenderer:
         self._provisional_width += display_width(text)
         self._provisional_active = True
     
-    def _flush_line(self, pre: str = "") -> None:
+    def _flush_line(self, pre: str = "", end="\n") -> None:
         line = self.line_buffer
         self.line_buffer = ""
         
@@ -586,7 +586,7 @@ class StreamingMarkdownRenderer:
                 self._clear_provisional()
                 formatted = self.formatter.format_line(line)
                 self._write_formatted(formatted)
-                self.stream.write('\n')
+                self.stream.write(end)
                 self.stream.flush()
     
     def _flush_table(self) -> None:
@@ -659,7 +659,7 @@ class StreamingMarkdownRenderer:
                 self.table_row_widths = []
         
         # Flush remaining content as final line
-        if self.line_buffer: self._flush_line()
+        if self.line_buffer: self._flush_line(end="")
         
         # Close any unclosed code block
         if self.in_code_block:

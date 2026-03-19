@@ -1,5 +1,7 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
+import RNS
+
 import sys
 import re
 import time
@@ -197,15 +199,18 @@ class TTYRenderer:
     def display_thinking(self, delta) -> None:
         if not self._is_tty(): return
         spinner = random.choice(SPINNER_FRAMES)
-        self._spinner_shown = True
         if self.stream_response:
-            if self.show_reasoning: self.stream_reasoning_chunk(delta)
+            if self.show_reasoning:
+                self.stream_reasoning_chunk(delta)
+                self._spinner_shown = False
             else:
+                self._spinner_shown = True
                 if time.time() > self._last_frame + self.FRAME_INTERVAL:
                     self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
                     self._last_frame = time.time()
                     self._in_reasoning = True
         else:
+            self._spinner_shown = True
             if time.time() > self._last_frame + self.FRAME_INTERVAL:
                 if self.show_reasoning: self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
                 else:                   self.write(f"\r{self.SYSTEM_ICON} {self.THINKING_ICON} Thinking... {spinner} ", end="")
@@ -236,9 +241,9 @@ class TTYRenderer:
                 
                 if self._render_markdown and self._md_formatter:
                     formatted = self._md_formatter.format_block(content)
-                    self.write(f"{formatted}", end="\n\n")
+                    self.write(f"{formatted}", end="")
                 
-                else: self.write(f"{content}", end="\n\n")
+                else: self.write(f"{content}", end="")
 
         # Pipe mode: Final, raw output only
         else:

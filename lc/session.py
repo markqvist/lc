@@ -16,6 +16,7 @@ from RNS.vendor import umsgpack as mp
 
 from lc.config import Config
 from lc.agent import Agent
+from lc.rendering import TTYRenderer
 from lc.models.openai import OpenAIBackend
 from lc.models.mock import MockBackend
 from lc.context import ContextAnalyzer, ContextShiftManager
@@ -596,6 +597,7 @@ class Session:
             try:
                 # user_input = input("lc> ").strip()
                 editor = InlineEditor(history_file=None)
+                print(TTYRenderer.RESET, end="")
                 user_input = editor.read("lc> ").strip()
 
                 if not user_input:
