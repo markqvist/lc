@@ -9,7 +9,21 @@ subtle ANSI color codes.
 """
 
 import re
+import shutil
 from typing import Optional, TextIO
+
+try:
+    import wcwidth
+    
+    def display_width(text: str) -> int:
+        """Calculate display width using wcwidth."""
+        # wcswidth returns -1 for non-printable strings, fallback to len
+        w = wcwidth.wcswidth(text)
+        return w if w is not None and w >= 0 else len(text)
+except ImportError:
+    # Fallback if wcwidth not available (should not happen, will be vendored)
+    def display_width(text: str) -> int:
+        return len(text)
 
 
 class MarkdownFormatter:
@@ -53,8 +67,19 @@ class MarkdownFormatter:
     ITALIC_RE = re.compile(r'\*(.+?)\*|_(.+?)_')
     STRIKE_RE = re.compile(r'~~(.+?)~~')
     
+    # ANSI escape sequence pattern (for stripping when calculating width)
+    ANSI_ESCAPE_RE = re.compile(r'\x1b\[[0-9;]*m')
+    
     def __init__(self):
         pass
+    
+    def strip_ansi(self, text: str) -> str:
+        """Remove ANSI escape sequences from text."""
+        return self.ANSI_ESCAPE_RE.sub('', text)
+    
+    def visible_width(self, text: str) -> int:
+        """Calculate display width excluding ANSI codes."""
+        return display_width(self.strip_ansi(text))
     
     def format_line(self, line: str, mode: str = "normal", indent: str = "") -> str:
         """
@@ -239,12 +264,12 @@ class StreamingMarkdownRenderer:
     - Content appears immediately (minimal latency)
     - Formatting applies at line boundaries
     - Code blocks detected and styled progressively
+    - Uses CUU (Cursor Up) for reliable multi-line clearing
     """
     
     # ANSI control sequences
     CLEAR_LINE = "\x1b[2K"          # Erase entire line
-    SAVE_CURSOR = "\x1b[s"          # SCP - Save Cursor Position
-    RESTORE_CURSOR = "\x1b[u"       # RCP - Restore Cursor Position
+    CURSOR_UP = "\x1b[{}A"          # CUU - Cursor Up N lines
     CLEAR_TO_END = "\x1b[J"         # ED0 - Erase from cursor to end of screen
     
     def __init__(self, formatter: MarkdownFormatter, stream: TextIO):
@@ -253,8 +278,25 @@ class StreamingMarkdownRenderer:
         self.line_buffer = ""
         self.in_code_block = False
         self.code_fence_indent = ""
-        self.code_block_started = False  # Track if we've output the top border
-        self._cursor_saved = False       # Cursor position saved for current line
+        
+        # Terminal width for line counting
+        self._term_width = self._get_terminal_width()
+        
+        # Provisional output tracking
+        self._provisional_width = 0     # Display columns of provisional output
+        self._provisional_active = False  # Whether provisional output is on screen
+    
+    def _get_terminal_width(self) -> int:
+        """Get terminal width, with fallback."""
+        try:
+            size = shutil.get_terminal_size()
+            return max(size.columns, 40)  # Minimum 40 columns
+        except Exception:
+            return 80  # Default fallback
+    
+    def _update_term_width(self) -> None:
+        """Refresh terminal width (call periodically)."""
+        self._term_width = self._get_terminal_width()
     
     def ingest(self, chunk: str) -> None:
         """
@@ -281,21 +323,25 @@ class StreamingMarkdownRenderer:
         """
         Write unformatted text provisionally.
         
-        Saves cursor position before first write of each line
-        to enable complete clearing of wrapped content on flush.
+        Tracks display width to enable accurate clearing of wrapped content.
         """
-        if text and not self._cursor_saved:
-            self.stream.write(self.SAVE_CURSOR)
-            self._cursor_saved = True
+        # Update terminal width before significant operations
+        if not self._provisional_active:
+            self._update_term_width()
+        
         self.stream.write(text)
         self.stream.flush()
+        
+        # Track display width (excluding any ANSI that might be in text)
+        self._provisional_width += display_width(text)
+        self._provisional_active = True
     
     def _flush_line(self) -> None:
         """
         Flush the current line buffer with proper formatting.
         
-        Clears provisional output (including wrapped lines) and rewrites
-        with ANSI formatting.
+        Clears provisional output (including wrapped lines) using CUU,
+        then rewrites with ANSI formatting.
         """
         line = self.line_buffer
         self.line_buffer = ""
@@ -316,7 +362,6 @@ class StreamingMarkdownRenderer:
                 self._write_formatted(self.formatter.format_codeblock_end())
                 self.in_code_block = False
                 self.code_fence_indent = ""
-                self.code_block_started = False
         else:
             # Regular line - clear provisional and rewrite formatted
             self._clear_provisional()
@@ -336,12 +381,33 @@ class StreamingMarkdownRenderer:
         """
         Clear all provisional output including wrapped lines.
         
-        Restores cursor to saved position and clears to end of screen,
-        ensuring complete removal of any wrapped content.
+        Uses CUU (Cursor Up) to move to the start of provisional output,
+        then clears to end of screen. Works correctly even when terminal
+        has scrolled.
         """
-        if self._cursor_saved:
-            self.stream.write(self.RESTORE_CURSOR + self.CLEAR_TO_END)
-            self._cursor_saved = False
+        if not self._provisional_active:
+            return
+        
+        # Calculate how many terminal lines the provisional output occupies
+        # We subtract 1 from width because a line that exactly fills term_width
+        # columns will have wrapped to the next line
+        if self._provisional_width == 0:
+            lines_up = 0
+        else:
+            # Integer division: (width - 1) // term_width gives 0 for single line
+            lines_up = (self._provisional_width - 1) // self._term_width
+        
+        # Move cursor up to the start of provisional output
+        if lines_up > 0:
+            self.stream.write(self.CURSOR_UP.format(lines_up))
+        
+        # Carriage return to start of line, then clear to end
+        self.stream.write('\r' + self.CLEAR_TO_END)
+        self.stream.flush()
+        
+        # Reset tracking
+        self._provisional_width = 0
+        self._provisional_active = False
     
     def _write_formatted(self, text: str) -> None:
         """Write formatted text."""
@@ -370,5 +436,5 @@ class StreamingMarkdownRenderer:
         self.line_buffer = ""
         self.in_code_block = False
         self.code_fence_indent = ""
-        self.code_block_started = False
-        self._cursor_saved = False
+        self._provisional_width = 0
+        self._provisional_active = False
