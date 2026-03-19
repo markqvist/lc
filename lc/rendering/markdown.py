@@ -481,7 +481,7 @@ class StreamingMarkdownRenderer:
                 # Split at first newline
                 pre, _, post = chunk.partition('\n')
                 self.line_buffer += pre
-                self._flush_line()
+                self._flush_line(pre=pre)
                 chunk = post
 
             else:
@@ -502,7 +502,7 @@ class StreamingMarkdownRenderer:
         self._provisional_width += display_width(text)
         self._provisional_active = True
     
-    def _flush_line(self) -> None:
+    def _flush_line(self, pre: str = "") -> None:
         line = self.line_buffer
         self.line_buffer = ""
         
@@ -546,14 +546,14 @@ class StreamingMarkdownRenderer:
                 self.table_buffer = [line]
                 self.table_row_widths = []
                 # Output provisionally and track row width
-                provisional_line = line + '\n'
+                provisional_line = pre + '\n'
                 self._write_provisional(provisional_line)
                 # Store just the content width (excluding newline which adds 0 physical lines visually)
                 self.table_row_widths.append(display_width(line))
             else:
                 # Continuing table
                 self.table_buffer.append(line)
-                provisional_line = line + '\n'
+                provisional_line = pre + '\n'
                 self._write_provisional(provisional_line)
                 self.table_row_widths.append(display_width(line))
         else:
@@ -612,6 +612,8 @@ class StreamingMarkdownRenderer:
             self._write_formatted(fl)
             self.stream.write('\n')
             self.stream.flush()
+
+        self.stream.write('\n')
         
         # Reset state
         self.in_table = False
@@ -660,7 +662,7 @@ class StreamingMarkdownRenderer:
                 self.table_row_widths = []
         
         # Flush remaining content as final line
-        if self.line_buffer: self._flush_line()
+        if self.line_buffer: self._flush_line(pre=pre)
         
         # Close any unclosed code block
         if self.in_code_block:
