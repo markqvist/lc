@@ -603,7 +603,8 @@ class Session:
                     break
                 
                 result = self.execute(user_input, gate_level=gate_level, can_prompt=can_prompt)
-                if result.error: print(f"Error: {result.error}", file=sys.stderr)
+                if result.error: print(f"\nError: {result.error}", file=sys.stderr)
+                else: print(f"\n")
                 
             except KeyboardInterrupt: print("\nUse 'exit' to quit.")
             except EOFError:

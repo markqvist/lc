@@ -772,10 +772,13 @@ def main() -> int:
                 print(f"Error: {result.error}", file=sys.stderr)
                 return 1
             
-            if not args.interactive: return 0
+            if not args.interactive:
+                return 0
         
         # Interactive mode
-        if args.interactive or args.resume or not command: return session.run_interactive(gate_level=args.gate, can_prompt=can_prompt, output_mode=output_mode)
+        if args.interactive or args.resume or not command:
+            if command: print("\n")
+            return session.run_interactive(gate_level=args.gate, can_prompt=can_prompt, output_mode=output_mode)
         
         return 0
         

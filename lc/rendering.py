@@ -76,7 +76,6 @@ class TTYRenderer:
             self._last_streamed = None
 
     def _guard_preparing(self):
-        RNS.log("GUARD PREPARING")
         if self._last_streamed == "preparing":
             self.write(self.CLEAR_LINE, end="\r")
             self._last_streamed = None
@@ -204,7 +203,6 @@ class TTYRenderer:
             self._spinner_shown = False
             return
         if self._spinner_shown:
-            RNS.log("CLEAR LINE"); time.sleep(1)
             self.write(self.CLEAR_LINE, end="\r")
             self._spinner_shown = False
 
@@ -218,7 +216,6 @@ class TTYRenderer:
         if self._is_tty():
             if reasoning_content and self.show_reasoning: self.display_reasoning_content(reasoning_content)
             if content and not self.stream_response:      self.write(f"\n{content}", end="\n")
-            if content and self.stream_response:          self.write(f"", end="\n")
 
         # Pipe mode: Final, raw output only
         else:
