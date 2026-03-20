@@ -133,10 +133,10 @@ Edit `~/.lc/config` to specify your model backend:
     context_shift_factor = 0.45
 
 [toolkits]
-builtin = filesystem, shell, cryptography
+  builtin = filesystem, shell, cryptography
 
 [resolvers]
-builtin = environment, filesystem, system
+  builtin = environment, filesystem, system
 ```
 
 Edit system prompt templates, et cetera, in `~/.lc/templates`.
@@ -397,7 +397,6 @@ The tool gating system asks for confirmation before destructive operations. But 
 - Does not make your coffee or drink it for you (yet)
 - Cannot read your mind (working on it)
 - Will not fix your architecture decisions
-- Context windows are finite; very complex tasks may need breaking down
 
 ## Why Not Just Use…
 
