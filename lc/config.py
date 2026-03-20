@@ -26,6 +26,7 @@ class Config:
         (config_path / "sessions").mkdir(exist_ok=True)
         (config_path / "templates").mkdir(exist_ok=True)
         (config_path / "skills").mkdir(exist_ok=True)
+        (config_path / "tools").mkdir(exist_ok=True)
 
         RNS.logdest = RNS.LOG_FILE
         RNS.logfile = os.path.expanduser((config_path / "logfile"))
