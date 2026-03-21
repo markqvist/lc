@@ -13,28 +13,30 @@ from typing import Optional, Callable
 
 
 class KeyType(Enum):
-    CHAR         = auto()
-    ENTER        = auto()
-    BACKSPACE    = auto()
-    DELETE       = auto()
-    UP           = auto()
-    DOWN         = auto()
-    LEFT         = auto()
-    RIGHT        = auto()
-    HOME         = auto()
-    END          = auto()
-    HOME_FULL    = auto()  # Ctrl+A - home of total input
-    END_FULL     = auto()  # Ctrl+E - end of total input
-    TAB          = auto()
-    SUBMIT       = auto()  # Ctrl+D / Alt+Enter
-    INTERRUPT    = auto()  # Ctrl+C
-    CLEAR_BUFFER = auto()  # Ctrl+K - clear all input
-    KILL_LINE_START = auto()  # Ctrl+U - kill to start of line
-    KILL_WORD_PREV = auto()   # Ctrl+W - kill previous word
-    YANK = auto()             # Ctrl+Y - yank from kill ring
-    TRANSPOSE = auto()        # Ctrl+T - transpose characters
-    REFRESH = auto()          # Ctrl+L - clear and redraw screen
-    UNKNOWN      = auto()
+    CHAR            = auto()
+    ENTER           = auto()
+    BACKSPACE       = auto()
+    DELETE          = auto()
+    UP              = auto()
+    DOWN            = auto()
+    LEFT            = auto()
+    RIGHT           = auto()
+    HOME            = auto()
+    END             = auto()
+    HOME_FULL       = auto()  # Ctrl+A     - home of total input
+    END_FULL        = auto()  # Ctrl+E     - end of total input
+    TAB             = auto()
+    SUBMIT          = auto()  # Ctrl+D / Alt+Enter
+    INTERRUPT       = auto()  # Ctrl+C
+    CLEAR_BUFFER    = auto()  # Ctrl+K     - clear all input
+    KILL_LINE_START = auto()  # Ctrl+U     - kill to start of line
+    KILL_WORD_PREV  = auto()  # Ctrl+W     - kill previous word
+    WORD_LEFT       = auto()  # Ctrl+Left  - move cursor to previous word
+    WORD_RIGHT      = auto()  # Ctrl+Right - move cursor to next word
+    YANK            = auto()  # Ctrl+Y     - yank from kill ring
+    TRANSPOSE       = auto()  # Ctrl+T     - transpose characters
+    REFRESH         = auto()  # Ctrl+L     - clear and redraw screen
+    UNKNOWN         = auto()
 
 
 class Key:
@@ -288,6 +290,17 @@ class InlineEditor:
             elif c2 == 'H': return Key(KeyType.HOME)
             elif c2 == 'F': return Key(KeyType.END)
 
+            # Extended sequence: 1;5X for Ctrl+Arrow keys
+            elif c2 == '1':
+                c3 = sys.stdin.read(1)
+                if c3 == ';':
+                    c4 = sys.stdin.read(1)
+                    if c4 == '5':
+                        c5 = sys.stdin.read(1)
+                        if c5 == 'C': return Key(KeyType.WORD_RIGHT)
+                        elif c5 == 'D': return Key(KeyType.WORD_LEFT)
+                return Key(KeyType.UNKNOWN)
+
             elif c2 == '3':
                 if sys.stdin.read(1) == '~': return Key(KeyType.DELETE)
                 return Key(KeyType.UNKNOWN)
@@ -324,6 +337,8 @@ class InlineEditor:
                                                         KeyType.CLEAR_BUFFER: self._clear_input,
                                                         KeyType.KILL_LINE_START: self._kill_line_start,
                                                         KeyType.KILL_WORD_PREV: self._kill_word_prev,
+                                                        KeyType.WORD_LEFT: self._cursor_word_left,
+                                                        KeyType.WORD_RIGHT: self._cursor_word_right,
                                                         KeyType.YANK: self._yank,
                                                         KeyType.TRANSPOSE: self._transpose_chars,
                                                         KeyType.REFRESH: self._refresh_screen,
@@ -550,6 +565,45 @@ class InlineEditor:
         self._wrapped_view = self._compute_wrapped_view()
         _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
 
+    def _cursor_word_left(self):
+        if self.cursor_col > 0:
+            line = self.buffer[self.cursor_row]
+            # Start from character before cursor
+            i = self.cursor_col - 1
+            # Skip non-alphanumeric characters
+            while i >= 0 and not line[i].isalnum():
+                i -= 1
+            # Skip alphanumeric characters (the word itself)
+            while i >= 0 and line[i].isalnum():
+                i -= 1
+            self.cursor_col = i + 1
+        elif self.cursor_row > 0:
+            # Move to end of previous line
+            self.cursor_row -= 1
+            self.cursor_col = len(self.buffer[self.cursor_row])
+        # Update visual column tracking for up/down movement
+        if not self._wrapped_view: self._wrapped_view = self._compute_wrapped_view()
+        _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
+
+    def _cursor_word_right(self):
+        line = self.buffer[self.cursor_row]
+        if self.cursor_col < len(line):
+            i = self.cursor_col
+            # Skip alphanumeric characters (the current word)
+            while i < len(line) and line[i].isalnum():
+                i += 1
+            # Skip non-alphanumeric characters (whitespace/punctuation)
+            while i < len(line) and not line[i].isalnum():
+                i += 1
+            self.cursor_col = i
+        elif self.cursor_row < len(self.buffer) - 1:
+            # Move to start of next line
+            self.cursor_row += 1
+            self.cursor_col = 0
+        # Update visual column tracking for up/down movement
+        if not self._wrapped_view: self._wrapped_view = self._compute_wrapped_view()
+        _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
+
     def _clear_input(self):
         self.buffer = [""]
         self.cursor_row = 0
@@ -710,6 +764,8 @@ def main():
     print("- Backspace/Delete: remove characters")
     print("- Ctrl+A: move to beginning of total input")
     print("- Ctrl+E: move to end of total input")
+    print("- Ctrl+Left: move to previous word")
+    print("- Ctrl+Right: move to next word")
     print("- Ctrl+K: clear all current input")
     print("- Ctrl+U: kill to start of line")
     print("- Ctrl+W: kill previous word")
