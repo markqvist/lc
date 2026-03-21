@@ -91,11 +91,27 @@ class MarkdownFormatter:
         return line
     
     def _format_inline(self, text: str) -> str:
-        # Order matters: code first (no nesting), then bold, then italic
-        text = self.INLINE_CODE_RE.sub(self._inline_code_sub, text)
+        # Extract inline code blocks and replace with placeholders
+        # Placeholder uses null bytes and avoids markdown special chars (* _ ~)
+        code_blocks = []
+        def extract_code(match):
+            code_blocks.append(match.group(1))
+            return f"\x00{len(code_blocks)-1}\x00"
+        
+        text = self.INLINE_CODE_RE.sub(extract_code, text)
+        
+        # Apply other inline formatting
         text = self.BOLD_RE.sub(self._bold_sub, text)
         text = self.ITALIC_RE.sub(self._italic_sub, text)
         text = self.STRIKE_RE.sub(self._strike_sub, text)
+        
+        # Restore code blocks with styling applied
+        def restore_code(match):
+            idx = int(match.group(1))
+            content = code_blocks[idx]
+            return f"{self.CODE_BG}{self.CODE_FG}{content}{self.RESET}"
+        
+        text = re.sub(r'\x00(\d+)\x00', restore_code, text)
         return text
     
     def _inline_code_sub(self, match: re.Match) -> str:
