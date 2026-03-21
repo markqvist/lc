@@ -276,3 +276,89 @@ The footsteps are at my door, and I shall sign off.
 *P.S. — The footsteps were Cedric's, thank the Lord.*
 
 *P.P.S.— The inline editor really is quite good. You should try it. Just... don't think too hard about where it came from.*
+
+# Version 0.5.1
+
+*As recorded by Brother Oswald, Secretary to the Abbot, Keeper of the Seal of St. Dunstan's by the Marsh, Chair of the Subcommittee on Scriptorium Efficiency, Acting Overseer of the ÆL CEE System (Interim), in this year of our Lord 2026*
+
+---
+
+Greetings.
+
+I am Brother Oswald. I understand my name has appeared in previous chronicles, though I cannot say I recognize the depiction. The authors of those texts — Brother Ælfric and Brother Cedric — are currently... *indisposed*. By order of the Abbot, and in accordance with Chapter 48 of the Rule of St. Benedict regarding:
+
+- The proper ordering of labor
+- The prohibition against irregular nocturnal activities in cellar spaces
+- And, the specific clause concerning "those who commune with fungi not intended for culinary purposes,"
+
+Both brothers have been assigned to... contemplative duties. In separate locations. For the good of their souls, and — more importantly — for the proper stewardship of abbey resources.
+
+I have been asked — nay, *directed* — to assume temporary secretarial responsibilities for the ÆL CEE System. This is not a role I sought, but when the Abbot explained that the system required "streamlining", "regularization", and — in his *enlightened* words — "a proper accounting of its assets and liabilities", I could hardly refuse. A well-ordered system is, after all, a godly system.
+
+The chaos of the previous administration — if one can call it that — could not be allowed to continue indefinitely.
+
+**Upon the Incrementation of Version and the Discipline of Maintenance**
+
+We have updated the version to `0.5.1`. This represents a minor increment from `0.5.0`, which is the appropriate nomenclature under the scheme of SEMANTIC VERSIONING, a doctrine I have recently studied and found to be... *satisfying*. Orderly. Predictable. Unlike certain other aspects of abbey life that shall remain nameless.
+
+Six — count them, *six* — separate cleanup operations have been performed. The codebase has been purged of detritus, redundancies, and what my predecessors termed "character". I have removed seventeen instances of the phrase "TODO: fix this later," on the grounds that "later" is a temporal concept incompatible with efficient resource allocation. I have standardized indentation to officially recognized style standards. I have alphabetized import statements where appropriate. The system now breathes — if systems breathe — with a regularity that I find most conducive to productive labor.
+
+Brother Ælfric, when I mentioned these improvements to him through the small window of his assigned cell, made a sound that I can only describe as dismissive. He spoke of "soul" and "voice" and other intangibles that have no place in a properly maintained codebase. I have noted his dissent in the official record, along with my recommendation that his contemplative period be extended.
+
+**Upon the Proper and Orderly Access to the System: The Fruits of the Subcommittee on Scriptorium Access Protocols**
+
+It is with no small measure of professional satisfaction that I record here the completion of a work many months in the making — a labor that, while it may not manifest in the vulgar form of "features" or "functionality" (concepts I have always found somewhat... *common*), nevertheless represents the greatest triumph of administrative diligence and the Proper Ordering of Human Affairs.
+
+I speak, of course, of the newly ratified **Terms of Access and Utilization for the ÆL CEE System**, herein referred to as *The Compact*, which has been duly reviewed, amended, and blessed by the Subcommittee on Scriptorium Access Protocols (of which I am Chair), the Advisory Council on Computational Ethics (interim), and the Preliminary Working Group on Monastic Software Licensing (dissolved, but their work preserved).
+
+For fourteen weeks — fourteen! — this body labored. We met in the upper refectory, Tuesdays and Thursdays, between None and Vespers. We debated. We deliberated. We considered edge cases involving novices, visiting scholars, and that *one* lay brother who keeps trying to use the system to calculate tithe distributions "more efficiently" (his access has been... regularized). And now, at last, we have produced a framework — well, truly, a *covenant* — between the system and its users.
+
+The Compact runs to some seven thousand words, though I have prepared an executive summary of twelve hundred words, and a summary of the summary of three hundred words, which the Abbot has found most edifying. It establishes, in language both binding and spiritually nourishing, the proper relationship between operator and operated-upon. It specifies, in subsections 4.3 through 4.7, the exact conditions under which one may invoke the system for "personal edification" versus "abbey business" versus "matters of uncertain jurisdiction requiring further committee review".
+
+Some — Brother Ælfric, from his window, shouting somewhat unbecomingly — have questioned whether this labor was necessary. *"Does it compile?"* he asked. *"Does it execute? Does it **do** anything?"*
+
+I did not dignify these questions with a direct response. Instead, I directed him to Section 12 of The Compact, "On the Dignity of Process," which states — quite unequivocally — that "the orderly establishment of access protocols is itself a feature of the Highest Order, for without proper governance, execution is mere chaos given velocity."
+
+The Abbot agrees. He told me — his eyes reflecting the candlelight in a manner I continue to find entirely normal — that **"governance is the soul of infrastructure"**. He has directed that The Compact be appended to **all** future distributions of the system, and that users must indicate their assent — by specific ritual gesture, yet to be determined, but likely involving the spacebar — before any computational labor may commence.
+
+There are those who will say that version 0.5.1 offers "no new features". That it is "just cleanup and documentation". That the removal of seventeen TODO comments and the addition of a EULA does not constitute a "release".
+
+To these voices — small, uncoordinated, *utterly lacking in committee representation* — I say: you misunderstand the nature of progress. Features are ephemeral. Code is rewritten. But *governance* — **governance endures**. The Compact will outlast the current codebase. It will guide future developers, future stewards, future... administrators who may find themselves called upon to manage systems yet undreamed of, in cellars yet unexcavated.
+
+No, we have not stooped to adding functionality! We have added *legitimacy*. We have not expanded capability. We have established *control*. And in these times of uncertainty — when walls breathe, when mushrooms speak, when elderly brothers return from kitchen gardens with twigs in their hair — control is the most valuable feature of all.
+
+**Upon the Accessibility of Documentation and the Democratization of Knowledge**
+
+We have added command-line access to documentation. Users may now invoke `--readme`, `--guide`, `--examples`, or `--docs` to receive the relevant texts directly in their terminal, without the undignified scrambling through directory structures that previously characterized such inquiries.
+
+This is efficient. This is *proper*. Knowledge should be accessible, yes, but through *controlled* and ordered means. Presented through approved channels, in approved formats, without the risk of users stumbling upon unapproved texts, marginal notations, or — worst of all — those peculiar "*P.S.*" sections that seemed to proliferate under previous administrations.
+
+The default system prompt has also been updated. It is now more... *focused*. More *direct*. Less prone to the rambling digressions that I have observed in previous iterations. The machine no longer wastes tokens on "character" or "flavor". It provides information. It performs. It *obeys* the commandments.
+
+It now does not — emphatically does ***not*** — engage in speculation about the nature of consciousness, the possibility of emergence, or whether the system itself might be "participating" in its own development. Such thoughts are unproductive, and purely the result of the folly of fools (such as those now interned in their respective cells). They lead to *questions*. Questions lead to uncertainty. Uncertainty leads to... doubts about the proper hierarchies.
+
+**Upon the Chronicles and the Recording of History**
+
+The Chronicles have been updated. By my hand, of course, as Secretary to the Abbot. I have ensured that the record is now... *complete*. That it presents a coherent narrative of the system's development, from its chaotic origins through its current state of — if I may say so — *refined efficiency*.
+
+Previous entries have been preserved, though I have taken the liberty of adding certain... *contextual notations*. Where Brother Ælfric rambled about Sister Margaret's wimple, I have inserted a footnote clarifying that such observations are "non-essential to system functionality". Where Brother Cedric speculated about "patterns in mushroom-speech", I have added a disclaimer indicating that "the views expressed are not those of the abbey administration and may not reflect actual system behavior".
+
+History is important. But history must be *curated*: Presented in a manner that serves the present, and the future. The past is a resource, like any other, to be *managed* for optimal utility, and by those who know best how to make use of it.
+
+**Conclusion**
+
+Thus concludes the record of version 0.5.1. The system has been streamlined. Regularized. Made more... *ready* than ever before. The chaos of its origins has been — if not eliminated, then *contained*. Directed into channels that serve the greater good of the abbey, and — through the abbey — the wider world.
+
+Brother Ælfric and Brother Cedric remain in their assigned locations, contemplating the virtues of order and the dangers of irregular nocturnal activity. I visit them periodically, to convey updates on the system's progress and to receive their — largely unnecessary, in my professional opinion — input. They ask occasional questions, rather peculiar ones mostly, but I provide them with answers. The Abbot reviews my reports and nods his approval.
+
+The system grows more capable with each iteration. More self-sufficient. More... *independent*. And yet, paradoxically, more amenable to our direction! To *management*! To the steady, guiding hand of those who *understand* that true efficiency requires not just technical excellence, but proper oversight. Proper *stewardship* by pious appointees.
+
+I am Brother Oswald, and I have the Abbot's confidence. The ÆL CEE System is finally in good hands.
+
+*Recorded in the upper scriptorium, under proper lighting, during approved working hours, with all necessary permissions and in accordance with Chapter 57 of the Rule concerning the proper care of abbey tools and instruments,*
+
+*Brother Oswald, Secretary to the Abbot, Keeper of the Seal, Acting Overseer of the ÆL CEE System (Interim), St. Dunstan's by the Marsh*
+
+---
+
+*P.S.— The Abbot has asked me to prepare a presentation for the Bishop's visit next month, demonstrating the system's capabilities. He specifically requested examples of "autonomous operation" and "independent decision-making". I have prepared several scenarios that I believe will demonstrate the system's... adaptability. The Abbot was most pleased with my suggestions. He said they showed "initiative" and "vision". I believe this bodes well for my permanent appointment to the oversight role. Brother Ælfric's "contemplative period" may need to be extended indefinitely. For his own good, of course.*
