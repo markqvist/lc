@@ -48,6 +48,7 @@ class OpenAIBackend(ModelBackend):
             # Ensure tool_call_id is present
             if clean_msg.get("role") == "tool":
                 if not clean_msg.get("tool_call_id"): clean_msg["tool_call_id"] = "unknown"
+                if "<__media__>" in clean_msg.get("content", ""): clean_msg["content"] = clean_msg["content"].replace("<__media__>", "&lt;__media__>")
             
             # Handle system/user messages - remove name if present
             # Preserve multimodal content arrays (list-type content for images)
