@@ -34,8 +34,7 @@ class OpenAIBackend(ModelBackend):
         # tool calls). Historical turns have reasoning stripped to avoid prefill conflicts.
         last_user_idx = -1
         for i, msg in enumerate(messages):
-            if msg.get("role") == "user":
-                last_user_idx = i
+            if msg.get("role") == "user": last_user_idx = i
         
         sanitized = []
         for i, msg in enumerate(messages):
@@ -55,12 +54,6 @@ class OpenAIBackend(ModelBackend):
                 # Remove name if present (not valid for assistant)
                 clean_msg.pop("name", None)
             
-            # Handle tool messages
-            # Ensure tool_call_id is present
-            # if clean_msg.get("role") == "tool":
-            #     if not clean_msg.get("tool_call_id"): clean_msg["tool_call_id"] = "unknown"
-            #     if "<__media__>" in clean_msg.get("content", ""): clean_msg["content"] = clean_msg["content"].replace("<__media__>", "&lt;__media__>")
-
             # Handle tool messages
             # Ensure tool_call_id is present
             if clean_msg.get("role") == "tool":
@@ -120,14 +113,6 @@ class OpenAIBackend(ModelBackend):
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
-
-        i = 0
-        RNS.log("--------------------------------------------------")
-        for m in sanitized_messages:
-            i += 1
-            if "reasoning_content" in m: RNS.log(f"MESSAGE {i}: {m["reasoning_content"]}")
-            else:                        RNS.log(f"MESSAGE {i}: NO REASONING")
-        RNS.log("--------------------------------------------------")
 
         payload_json = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         url = f"{self.base_url}/chat/completions"
