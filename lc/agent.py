@@ -130,25 +130,22 @@ class Agent:
             reasoning_content = message.get("reasoning_content", "")
             self.renderer.display_response(content, reasoning_content)
 
-            multimodal_content = []
             for tool_call in tool_calls:
                 if checkpoint_callback: checkpoint_callback()
                 result, modality = self._execute_tool_call(tool_call)
 
                 if modality == "image":
                     image_content = self._create_image_content(result, tool_call)
-                    if image_content: multimodal_content.extend(image_content)
-                    self.session.conversation.append({"role": "tool", "tool_call_id": tool_call.get("id"),
-                                                      "name": tool_call.get("function", {}).get("name"), "content": "Image loaded successfully"})
+                    if image_content:
+                        self.session.conversation.append({"role": "tool", "tool_call_id": tool_call.get("id"),
+                                                          "name": tool_call.get("function", {}).get("name"), "content": image_content})
+                    else:
+                        self.session.conversation.append({"role": "tool", "tool_call_id": tool_call.get("id"),
+                                                          "name": tool_call.get("function", {}).get("name"), "content": "[Failed to load image]"})
                 else:
                     self.session.conversation.append({"role": "tool", "tool_call_id": tool_call.get("id"),
                                                       "name": tool_call.get("function", {}).get("name"), "content": result})
-            
-            # Inject multimodal user message if we have image content
-            if multimodal_content:
-                self.session.conversation.append({ "role": "user",
-                                                   "content": multimodal_content })
-            
+                        
             final_response = self._call_model(self._get_all_tools())
             return self._process_response(final_response, checkpoint_callback=checkpoint_callback)
         

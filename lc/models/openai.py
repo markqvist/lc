@@ -46,18 +46,49 @@ class OpenAIBackend(ModelBackend):
             
             # Handle tool messages
             # Ensure tool_call_id is present
+            # if clean_msg.get("role") == "tool":
+            #     if not clean_msg.get("tool_call_id"): clean_msg["tool_call_id"] = "unknown"
+            #     if "<__media__>" in clean_msg.get("content", ""): clean_msg["content"] = clean_msg["content"].replace("<__media__>", "&lt;__media__>")
+
+            # Handle tool messages
+            # Ensure tool_call_id is present
             if clean_msg.get("role") == "tool":
                 if not clean_msg.get("tool_call_id"): clean_msg["tool_call_id"] = "unknown"
-                if "<__media__>" in clean_msg.get("content", ""): clean_msg["content"] = clean_msg["content"].replace("<__media__>", "&lt;__media__>")
+                # Support multimodal content arrays in tool messages (non-standard extension)
+                # Official OpenAI API only allows text, but llama.cpp may support images
+                content = clean_msg.get("content")
+                if isinstance(content, list):
+                    # Array content - verify all parts have required fields
+                    valid_parts = []
+                    for part in content:
+                        if isinstance(part, dict) and "type" in part:
+                            if part["type"] == "text" and "text" in part: valid_parts.append(part)
+                            elif part["type"] == "image_url" and "image_url" in part: valid_parts.append(part)
+                    
+                    clean_msg["content"] = valid_parts if valid_parts else "[Invalid content]"
+                
+                elif isinstance(content, str):
+                    if "<__media__>" in content: clean_msg["content"] = content.replace("<__media__>", "&lt;__media__>")
             
             # Handle system/user messages - remove name if present
             # Preserve multimodal content arrays (list-type content for images)
             # No transformation needed - pass through as-is
-            if clean_msg.get("role") in ("system", "user"): clean_msg.pop("name", None)
+            if clean_msg.get("role") in ("system", "user"):
+                clean_msg.pop("name", None)
+                content = clean_msg.get("content", "")
+                if content:
+                    if "<__media__>" in content: clean_msg["content"] = clean_msg["content"].replace("<__media__>", "&lt;__media__>")
+
+            if clean_msg.get("role") in ("assistant"):
+                clean_msg.pop("name", None)
+                content = clean_msg.get("content", "")
+                if content:
+                    if "<__media__>" in content: clean_msg["content"] = clean_msg["content"].replace("<__media__>", "&lt;__media__>")
             
             sanitized.append(clean_msg)
         
         return sanitized
+
     
     def _complete(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]], chunk_callback: Optional[callable] = None) -> Dict[str, Any]:
         attempts_left = self.REQUEST_TRIES
