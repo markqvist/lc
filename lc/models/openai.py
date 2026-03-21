@@ -28,12 +28,23 @@ class OpenAIBackend(ModelBackend):
         return self._complete(messages, tools, chunk_callback)
         
     def _sanitize_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        # Find the last user message to determine current assistant flow boundary
+        # Reasoning content is only preserved for messages after the last user message
+        # (i.e., the currently in-progress assistant output stream with interleaved
+        # tool calls). Historical turns have reasoning stripped to avoid prefill conflicts.
+        last_user_idx = -1
+        for i, msg in enumerate(messages):
+            if msg.get("role") == "user":
+                last_user_idx = i
+        
         sanitized = []
-        for msg in messages:
+        for i, msg in enumerate(messages):
             clean_msg = dict(msg)
             
-            # Remove reasoning_content if present (llama.cpp prefill incompatibility)
-            clean_msg.pop("reasoning_content", None)
+            # Remove reasoning_content from historical turns (at or before last user message)
+            # Preserve reasoning_content only within the current assistant flow (after last user)
+            if i <= last_user_idx:
+                clean_msg.pop("reasoning_content", None)
             
             # Handle assistant messages with tool_calls
             if clean_msg.get("role") == "assistant":
@@ -109,6 +120,14 @@ class OpenAIBackend(ModelBackend):
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
+
+        i = 0
+        RNS.log("--------------------------------------------------")
+        for m in sanitized_messages:
+            i += 1
+            if "reasoning_content" in m: RNS.log(f"MESSAGE {i}: {m["reasoning_content"]}")
+            else:                        RNS.log(f"MESSAGE {i}: NO REASONING")
+        RNS.log("--------------------------------------------------")
 
         payload_json = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         url = f"{self.base_url}/chat/completions"
