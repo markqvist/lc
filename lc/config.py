@@ -27,6 +27,7 @@ class Config:
         (config_path / "templates").mkdir(exist_ok=True)
         (config_path / "skills").mkdir(exist_ok=True)
         (config_path / "tools").mkdir(exist_ok=True)
+        (config_path / "quirks").mkdir(exist_ok=True)
 
         RNS.logdest = RNS.LOG_FILE
         RNS.logfile = os.path.expanduser((config_path / "logfile"))
@@ -54,24 +55,25 @@ class Config:
             if not "session" in data: data["session"] = {}
             if not "display" in data: data["display"] = {}
 
-            if not data.get("toolkits",  {}).get("builtin",     {}): data["toolkits"]["builtin"]             = []
-            if not data.get("toolkits",  {}).get("directories", {}): data["toolkits"]["directories"]         = []
-            if not data.get("resolvers", {}).get("builtin",     {}): data["resolvers"]["builtin"]            = []
-            if not data.get("resolvers", {}).get("directories", {}): data["resolvers"]["directories"]        = []
-            if not data.get("skills",    {}).get("directories", {}): data["skills"]["directories"]           = []
-            if not data.get("skills",    {}).get("pinned",      {}): data["skills"]["pinned"]                = []
-            if not data.get("models",    {}).get("default",     {}): data["models"]["default"]               = "primary"
-            if not data.get("logging",   {}).get("level",       {}): data["logging"]["level"]                = 4
-            if not data.get("session",   {}).get("lock_timeout",{}): data["session"]["lock_timeout"]         = 10800
+            if not data.get("toolkits",  {}).get("builtin",           {}): data["toolkits"]["builtin"]        = []
+            if not data.get("toolkits",  {}).get("directories",       {}): data["toolkits"]["directories"]    = []
+            if not data.get("resolvers", {}).get("builtin",           {}): data["resolvers"]["builtin"]       = []
+            if not data.get("resolvers", {}).get("directories",       {}): data["resolvers"]["directories"]   = []
+            if not data.get("skills",    {}).get("directories",       {}): data["skills"]["directories"]      = []
+            if not data.get("skills",    {}).get("pinned",            {}): data["skills"]["pinned"]           = []
+            if not data.get("models",    {}).get("default",         None): data["models"]["default"]          = "primary"
+            if not data.get("logging",   {}).get("level",           None): data["logging"]["level"]           = 4
+            if not data.get("session",   {}).get("lock_timeout",    None): data["session"]["lock_timeout"]    = 10800
             
-            if not data.get("loading",   {}).get("user_skills",   {}): data["loading"]["user_skills"]        = True
-            if not data.get("loading",   {}).get("user_tools",    {}): data["loading"]["user_tools"]         = True
-            if not data.get("loading",   {}).get("project_skills",{}): data["loading"]["project_skills"]     = False
-            if not data.get("loading",   {}).get("project_tools", {}): data["loading"]["project_tools"]      = False
+            if not data.get("loading",   {}).get("user_skills",     None): data["loading"]["user_skills"]     = True
+            if not data.get("loading",   {}).get("user_tools",      None): data["loading"]["user_tools"]      = True
+            if not data.get("loading",   {}).get("user_quirks",     None): data["loading"]["user_quirks"]     = True
+            if not data.get("loading",   {}).get("project_skills",  None): data["loading"]["project_skills"]  = False
+            if not data.get("loading",   {}).get("project_tools",   None): data["loading"]["project_tools"]   = False
             
-            if not data.get("display",   {}).get("stream_output",   {}): data["display"]["stream_output"]    = True
-            if not data.get("display",   {}).get("render_markdown", {}): data["display"]["render_markdown"]  = True
-            if not data.get("display",   {}).get("show_reasoning",  {}): data["display"]["show_reasoning"]   = False
+            if not data.get("display",   {}).get("stream_output",   None): data["display"]["stream_output"]   = True
+            if not data.get("display",   {}).get("render_markdown", None): data["display"]["render_markdown"] = True
+            if not data.get("display",   {}).get("show_reasoning",  None): data["display"]["show_reasoning"]  = False
 
             if not data["stdin"].get("max_text_bytes", {}):   data["stdin"]["max_text_bytes"]   = 16384
             if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
@@ -149,6 +151,9 @@ class Config:
     def identity_path(self) -> Path: return (self._path / "agent_identity.rid")
     
     @property
+    def quirks_path(self) -> Path: return (self._path / "quirks")
+    
+    @property
     def model(self) -> Dict[str, Any]: return self.get_model_config()
 
     @property
@@ -180,6 +185,7 @@ class Config:
         ld = self._data.get("loading", {})
         return { "user_skills":    ld.get("user_skills", True),
                  "user_tools":     ld.get("user_tools", True),
+                 "user_quirks":    ld.get("user_quirks", True),
                  "project_skills": ld.get("project_skills", False),
                  "project_tools":  ld.get("project_tools", False) }
 
@@ -257,6 +263,7 @@ directories = list
 [loading]
 user_skills = boolean
 user_tools = boolean
+user_quirks = boolean
 project_skills = boolean
 project_tools = boolean
 
@@ -332,6 +339,7 @@ DEFAULT_CONFIG = """
   # behaviour defaults.
   user_skills = yes
   user_tools = yes
+  user_quirks = yes
 
   # Project tools and skills look for a
   # local .lc folder in the current working

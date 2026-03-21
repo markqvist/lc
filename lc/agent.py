@@ -36,7 +36,7 @@ class Agent:
         self.show_reasoning   = show_reasoning
         self.stream_response  = stream_response
         self.render_markdown  = render_markdown
-        self.quirks           = get_quirk_registry()
+        self.quirks           = get_quirk_registry(session.config)
         self.enabled_quirks   = model_backend.config.get("quirks", [])
     
     def run_turn(self, user_input: str, checkpoint_callback: Callable = None) -> str:
