@@ -55,25 +55,25 @@ class Config:
             if not "session" in data: data["session"] = {}
             if not "display" in data: data["display"] = {}
 
-            if not data.get("toolkits",  {}).get("builtin",           {}): data["toolkits"]["builtin"]        = []
-            if not data.get("toolkits",  {}).get("directories",       {}): data["toolkits"]["directories"]    = []
-            if not data.get("resolvers", {}).get("builtin",           {}): data["resolvers"]["builtin"]       = []
-            if not data.get("resolvers", {}).get("directories",       {}): data["resolvers"]["directories"]   = []
-            if not data.get("skills",    {}).get("directories",       {}): data["skills"]["directories"]      = []
-            if not data.get("skills",    {}).get("pinned",            {}): data["skills"]["pinned"]           = []
-            if not data.get("models",    {}).get("default",         None): data["models"]["default"]          = "primary"
-            if not data.get("logging",   {}).get("level",           None): data["logging"]["level"]           = 4
-            if not data.get("session",   {}).get("lock_timeout",    None): data["session"]["lock_timeout"]    = 10800
+            if not data.get("toolkits",  {}).get("builtin",        {}): data["toolkits"]["builtin"]             = []
+            if not data.get("toolkits",  {}).get("directories",    {}): data["toolkits"]["directories"]         = []
+            if not data.get("resolvers", {}).get("builtin",        {}): data["resolvers"]["builtin"]            = []
+            if not data.get("resolvers", {}).get("directories",    {}): data["resolvers"]["directories"]        = []
+            if not data.get("skills",    {}).get("directories",    {}): data["skills"]["directories"]           = []
+            if not data.get("skills",    {}).get("pinned",         {}): data["skills"]["pinned"]                = []
+            if not data.get("models",    {}).get("default",      None): data["models"]["default"]               = "primary"
+            if not data.get("logging",   {}).get("level",        None): data["logging"]["level"]                = 4
+            if not data.get("session",   {}).get("lock_timeout", None): data["session"]["lock_timeout"]         = 10800
             
-            if not data.get("loading",   {}).get("user_skills",     None): data["loading"]["user_skills"]     = True
-            if not data.get("loading",   {}).get("user_tools",      None): data["loading"]["user_tools"]      = True
-            if not data.get("loading",   {}).get("user_quirks",     None): data["loading"]["user_quirks"]     = True
-            if not data.get("loading",   {}).get("project_skills",  None): data["loading"]["project_skills"]  = False
-            if not data.get("loading",   {}).get("project_tools",   None): data["loading"]["project_tools"]   = False
-            
-            if not data.get("display",   {}).get("stream_output",   None): data["display"]["stream_output"]   = True
-            if not data.get("display",   {}).get("render_markdown", None): data["display"]["render_markdown"] = True
-            if not data.get("display",   {}).get("show_reasoning",  None): data["display"]["show_reasoning"]  = False
+            if not "global_history"  in data.get("session", {}): data["session"]["global_history"]  = True
+            if not "user_skills"     in data.get("loading", {}): data["loading"]["user_skills"]     = True
+            if not "user_tools"      in data.get("loading", {}): data["loading"]["user_tools"]      = True
+            if not "user_quirks"     in data.get("loading", {}): data["loading"]["user_quirks"]     = True
+            if not "project_skills"  in data.get("loading", {}): data["loading"]["project_skills"]  = False
+            if not "project_tools"   in data.get("loading", {}): data["loading"]["project_tools"]   = False
+            if not "show_reasoning"  in data.get("display", {}): data["display"]["show_reasoning"]  = False
+            if not "stream_output"   in data.get("display", {}): data["display"]["stream_output"]   = True
+            if not "render_markdown" in data.get("display", {}): data["display"]["render_markdown"] = True
 
             if not data["stdin"].get("max_text_bytes", {}):   data["stdin"]["max_text_bytes"]   = 16384
             if not data["stdin"].get("max_binary_bytes", {}): data["stdin"]["max_binary_bytes"] = 512
@@ -271,6 +271,7 @@ project_tools = boolean
 [session]
 persistence = boolean
 lock_timeout = integer
+global_history = boolean
 
 [display]
 show_reasoning = boolean
@@ -350,10 +351,23 @@ DEFAULT_CONFIG = """
   project_tools = no
 
 [session]
+  # Interactive-mode editor history can be
+  # global or per-session.
+  global_history = yes
+
+  # You can define whether to persist sessions
+  # for later resumption
   persistence = yes
+
+  # Sessions are locked during execution, and
+  # unlock once current execution finishes.
+  # If a session remains locked for longer
+  # than this timeout, for example due to a
+  # crash, it will be unlocked automatically.
   lock_timeout = 10800
 
 [display]
+  # Pretty self-explanatory
   show_reasoning = no
   stream_output = yes
   render_markdown = yes
