@@ -198,6 +198,13 @@ class Agent:
         
         if toolkit is None: return f"Error: Unknown toolkit '{toolkit_name}'", "text"
         
+        # Validate and cast arguments to correct types per tool schema
+        schema = toolkit._schemas.get(method_name, {})
+        cast_error = self._cast_arguments(arguments, schema, tool_name)
+        if cast_error:
+            self.renderer.display_tool_result(cast_error)
+            return cast_error, "text"
+        
         toolkit._lc_context = Context(session=self.session, config=self.session.config)
         
         modality = toolkit.get_modality(method_name)
@@ -212,6 +219,75 @@ class Agent:
         self.renderer.display_tool_result(result, modality)
         
         return result, modality
+    
+    def _cast_arguments(self, arguments: Dict[str, Any], schema: Dict[str, Any], tool_name: str) -> Optional[str]:
+        properties = schema.get("properties", {})
+        for param_name, param_spec in properties.items():
+            # Skip missing optional params
+            if param_name not in arguments: continue
+                
+            value = arguments[param_name]
+            target_type = param_spec.get("type", "string")
+            
+            # Skip if already correct type
+            type_map = { "string": str,
+                         "integer": int,
+                         "number": (int, float),
+                         "boolean": bool,
+                         "array": list,
+                         "object": dict }
+            
+            expected = type_map.get(target_type)
+            if expected and isinstance(value, expected): continue
+            
+            try:
+                if target_type == "string": arguments[param_name] = str(value)
+                
+                elif target_type == "integer":
+                    # Handle float strings like "5.0" -> 5, and actual floats
+                    if isinstance(value, float):                  arguments[param_name] = int(value)
+                    elif isinstance(value, str) and "." in value: arguments[param_name] = int(float(value))
+                    else:                                         arguments[param_name] = int(value)
+                        
+                elif target_type == "number": arguments[param_name] = float(value)
+                    
+                elif target_type == "boolean":
+                    if isinstance(value, str):
+                        lowered = value.lower()
+                        if lowered in ("true", "1", "yes", "on"):    arguments[param_name] = True
+                        elif lowered in ("false", "0", "no", "off"): arguments[param_name] = False
+                        else: return f"Error: Parameter '{param_name}' has invalid boolean value: '{value}' (expected true/false, yes/no, 1/0, on/off)"
+                    
+                    else: arguments[param_name] = bool(value)
+                        
+                elif target_type == "array":
+                    if isinstance(value, str):
+                        try:
+                            import json
+                            parsed = json.loads(value)
+                            if not isinstance(parsed, list): return f"Error: Parameter '{param_name}' cannot be converted to array: '{value}'"
+                            arguments[param_name] = parsed
+                        
+                        except json.JSONDecodeError: return f"Error: Parameter '{param_name}' has invalid array format: '{value}'"
+                    
+                    else: arguments[param_name] = list(value)
+                        
+                elif target_type == "object":
+                    if isinstance(value, str):
+                        try:
+                            import json
+                            parsed = json.loads(value)
+                            if not isinstance(parsed, dict): return f"Error: Parameter '{param_name}' cannot be converted to object: '{value}'"
+                            arguments[param_name] = parsed
+                        
+                        except json.JSONDecodeError: return f"Error: Parameter '{param_name}' has invalid object format: '{value}'"
+                    
+                    else: arguments[param_name] = dict(value)
+                        
+            except (ValueError, TypeError) as e:
+                return f"Error: Parameter '{param_name}' has invalid type: expected {target_type}, got '{value}' ({type(value).__name__})"
+        
+        return None
     
     def _confirm_gate(self, tool_name: str, tool_gate: int, arguments: Dict[str, Any]) -> bool:
         if not self.can_prompt: return False
