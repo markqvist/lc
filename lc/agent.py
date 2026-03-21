@@ -122,12 +122,11 @@ class Agent:
         if tool_calls:
             content = message.get("content")
             if not content: content = None
+            reasoning_content = message.get("reasoning_content", "")
             
             assistant_msg = { "role": "assistant", "content": content, "tool_calls": tool_calls }
+            if reasoning_content: assistant_msg["reasoning_content"] = reasoning_content
             self.session.conversation.append(assistant_msg)
-
-            content = message.get("content", "")
-            reasoning_content = message.get("reasoning_content", "")
             self.renderer.display_response(content, reasoning_content)
 
             for tool_call in tool_calls:
