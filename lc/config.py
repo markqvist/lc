@@ -155,6 +155,9 @@ class Config:
     def quirks_path(self) -> Path: return (self._path / "quirks")
     
     @property
+    def editor_history_path(self) -> Path: return (self._path / "editor_history")
+    
+    @property
     def model(self) -> Dict[str, Any]: return self.get_model_config()
 
     @property

@@ -599,7 +599,8 @@ class Session:
         print("Use \"exit\" or \"quit\" to detach session.")
         print("Ctrl+D or Alt+Enter executes.\n")
 
-        history_path = self.session_file_path.with_suffix(".history")
+        if self.config.session["global_history"]: history_path = self.config.editor_history_path
+        else:                                     history_path = self.session_file_path.with_suffix(".history")
         
         while True:
             try:
