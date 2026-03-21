@@ -429,7 +429,7 @@ class Session:
         recent = non_system_msgs[-self.CONTEXT_PREVIEW_MESSAGES:]
         for msg in recent:
             role = msg.get("role", "unknown")
-            content = msg.get("content", "")
+            content = str(msg.get("content", ""))
             tool_calls = msg.get("tool_calls", [])
             
             if role == "user":

@@ -152,16 +152,19 @@ class TTYRenderer:
         if not self._is_tty(): return
         self._guard_reasoning()
         self._guard_content()
+
+        is_error = result.startswith("Error:") or result.startswith("[Invalid") or result.startswith("[Could not")
         
         # Handle non-text modalities with placeholder
         if modality != "text":
-            is_error = result.startswith("Error:") or result.startswith("[Invalid") or result.startswith("[Could not")
             if is_error: self.write(f"\n{self.RED}✗ Result:{self.RESET} {result}\n")
             else:        self.write(f"\n{self.GREEN}✓ Result:{self.RESET} ({modality} data)\n")
             return
-        
-        display = self._compact_multiline(result)
-        self.write(f"\n{self.GREEN}✓ Result: {self.RESET} {display}{self.RESET}\n\n")
+
+        else:
+            display = self._compact_multiline(result)
+            if is_error: self.write(f"\n{self.RED}✗ Result:{self.RESET} {display}{self.RESET}\n\n")
+            else:        self.write(f"\n{self.GREEN}✓ Result:{self.RESET} {display}{self.RESET}\n\n")
 
     def _compact_multiline(self, text, limit=384):
         display = text

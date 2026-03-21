@@ -57,15 +57,15 @@ class Filesystem(Toolkit):
             return f"Error reading file: {e}"
     
     @tool(gate_level=0, modality="image")
-    def read_image(self, path: str) -> str:
+    def view_image(self, path: str) -> str:
         """
-        Read an image file and return base64-encoded data.
+        View a file in vision modality.
         
         Args:
             path: Path to the image file
         
         Returns:
-            Base64-encoded image data with mime type prefix
+            The image data in vision modality for direct viewing
         """
         
         import base64
@@ -78,13 +78,11 @@ class Filesystem(Toolkit):
             
             # Detect mime type
             suffix = file_path.suffix.lower()
-            mime_types = {
-                '.png': 'image/png',
-                '.jpg': 'image/jpeg',
-                '.jpeg': 'image/jpeg',
-                '.gif': 'image/gif',
-                '.webp': 'image/webp',
-            }
+            mime_types = { '.png': 'image/png',
+                           '.jpg': 'image/jpeg',
+                           '.jpeg': 'image/jpeg',
+                           '.gif': 'image/gif',
+                           '.webp': 'image/webp' }
 
             mime_type = mime_types.get(suffix, 'image/png')
             
@@ -97,13 +95,14 @@ class Filesystem(Toolkit):
         except Exception as e: return f"Error reading image: {e}"
     
     @tool(gate_level=1)
-    def write(self, path: str, content: str) -> str:
+    def write(self, path: str, content: str, allow_overwrite: bool = False) -> str:
         """
-        Write content to a file.
+        Write content to a file. 
         
         Args:
             path: Path to write to
             content: Content to write
+            allow_overwrite: Whether overwriting existing files with new content is allowed
         
         Returns:
             Success message or error
@@ -111,8 +110,8 @@ class Filesystem(Toolkit):
         
         try:
             file_path = Path(path).expanduser()
-            
-            # Create parent directories
+            if file_path.exists() and not allow_overwrite: return f"Error: File already exists, and allow_overwrite was not enabled"
+
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content, encoding='utf-8')
             
