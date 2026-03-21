@@ -1,14 +1,9 @@
 # Copyright (c) 2026 Mark Qvist - See LICENSE.md and README.md
 
-import json
-import urllib.request
-import urllib.parse
-from typing import List
+# Symbolic calculator tool example.
 
 from lc.toolkit import Toolkit, tool
-
 import sympy as sp
-
 
 def normalize_exponentiation(equation: str) -> str:
     """Convert various exponentiation notations to Sympy format."""
