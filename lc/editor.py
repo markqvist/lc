@@ -29,6 +29,11 @@ class KeyType(Enum):
     SUBMIT       = auto()  # Ctrl+D / Alt+Enter
     INTERRUPT    = auto()  # Ctrl+C
     CLEAR_BUFFER = auto()  # Ctrl+K - clear all input
+    KILL_LINE_START = auto()  # Ctrl+U - kill to start of line
+    KILL_WORD_PREV = auto()   # Ctrl+W - kill previous word
+    YANK = auto()             # Ctrl+Y - yank from kill ring
+    TRANSPOSE = auto()        # Ctrl+T - transpose characters
+    REFRESH = auto()          # Ctrl+L - clear and redraw screen
     UNKNOWN      = auto()
 
 
@@ -66,6 +71,10 @@ class InlineEditor:
         self._orig_termios: Optional[list] = None
         self._term_width: int = 80
         self._term_height: int = 24
+
+        # Kill ring for cut/copy operations
+        self._kill_ring: list[str] = []
+        self._kill_index: int = -1
 
         if self.history_file: self._load_history()
 
@@ -257,6 +266,11 @@ class InlineEditor:
         if ord(c) == 1: return Key(KeyType.HOME_FULL)                      # Ctrl+A
         if ord(c) == 5: return Key(KeyType.END_FULL)                       # Ctrl+E
         if ord(c) == 11: return Key(KeyType.CLEAR_BUFFER)                  # Ctrl+K
+        if ord(c) == 21: return Key(KeyType.KILL_LINE_START)               # Ctrl+U
+        if ord(c) == 23: return Key(KeyType.KILL_WORD_PREV)                # Ctrl+W
+        if ord(c) == 25: return Key(KeyType.YANK)                          # Ctrl+Y
+        if ord(c) == 20: return Key(KeyType.TRANSPOSE)                     # Ctrl+T
+        if ord(c) == 12: return Key(KeyType.REFRESH)                       # Ctrl+L
         return Key.from_char(c) # Regular characters
 
     def _read_escape_sequence(self) -> Key:
@@ -308,6 +322,11 @@ class InlineEditor:
                                                         KeyType.HOME_FULL: self._cursor_home_total,
                                                         KeyType.END_FULL: self._cursor_end_total,
                                                         KeyType.CLEAR_BUFFER: self._clear_input,
+                                                        KeyType.KILL_LINE_START: self._kill_line_start,
+                                                        KeyType.KILL_WORD_PREV: self._kill_word_prev,
+                                                        KeyType.YANK: self._yank,
+                                                        KeyType.TRANSPOSE: self._transpose_chars,
+                                                        KeyType.REFRESH: self._refresh_screen,
                                                         KeyType.TAB: lambda: self._insert_char("    ") }
         handler = handlers.get(key.type)
         if handler: handler()
@@ -539,6 +558,66 @@ class InlineEditor:
         self._wrapped_view = self._compute_wrapped_view()
         _, self._visual_col = self._logical_to_visual(0, 0)
 
+    ########################
+    # Kill ring operations #
+    ########################
+
+    def _kill_line_start(self):
+        """Kill text from cursor to start of current line."""
+        killed = self.buffer[self.cursor_row][:self.cursor_col]
+        self.buffer[self.cursor_row] = self.buffer[self.cursor_row][self.cursor_col:]
+        self.cursor_col = 0
+        if killed:  # Only add non-empty kills to ring
+            self._kill_ring.append(killed)
+            self._kill_index = len(self._kill_ring) - 1  # Fix: use 0-based index
+        self._wrapped_view = self._compute_wrapped_view()
+        _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
+
+    def _kill_word_prev(self):
+        """Kill text from cursor back to previous word boundary."""
+        line = self.buffer[self.cursor_row]
+        if self.cursor_col == 0:
+            return
+
+        # Find word boundary before cursor
+        i = self.cursor_col - 1
+        while i >= 0 and not line[i].isalnum():
+            i -= 1
+        while i >= 0 and line[i].isalnum():
+            i -= 1
+
+        killed = line[i+1:self.cursor_col]
+        self.buffer[self.cursor_row] = line[:i+1] + line[self.cursor_col:]
+        self.cursor_col = i + 1
+        if killed:  # Only add non-empty kills to ring
+            self._kill_ring.append(killed)
+            self._kill_index = len(self._kill_ring) - 1  # Fix: use 0-based index
+        self._wrapped_view = self._compute_wrapped_view()
+        _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
+
+    def _yank(self):
+        """Yank text from kill ring at cursor position."""
+        # Validate kill index is within bounds
+        if 0 <= self._kill_index < len(self._kill_ring):
+            killed_text = self._kill_ring[self._kill_index]
+            for c in killed_text:
+                self._insert_char(c)
+
+    def _transpose_chars(self):
+        """Transpose character before cursor with character at cursor."""
+        line = self.buffer[self.cursor_row]
+        if self.cursor_col > 0 and self.cursor_col < len(line):
+            # Swap characters at cursor_col-1 and cursor_col
+            self.buffer[self.cursor_row] = line[:self.cursor_col-1] + line[self.cursor_col] + line[self.cursor_col-1] + line[self.cursor_col+1:]
+            self.cursor_col += 1
+            self._wrapped_view = self._compute_wrapped_view()
+            _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
+
+    def _refresh_screen(self):
+        """Clear screen and re-render editor content."""
+        sys.stdout.write("\x1b[H\x1b[2J")  # Clear screen and move cursor to origin
+        self._render()
+
     ######################
     # History management #
     ######################
@@ -632,6 +711,11 @@ def main():
     print("- Ctrl+A: move to beginning of total input")
     print("- Ctrl+E: move to end of total input")
     print("- Ctrl+K: clear all current input")
+    print("- Ctrl+U: kill to start of line")
+    print("- Ctrl+W: kill previous word")
+    print("- Ctrl+Y: yank from kill ring")
+    print("- Ctrl+T: transpose characters")
+    print("- Ctrl+L: clear and redraw screen")
     print("- Ctrl+D: submit and display result")
     print("- Ctrl+C: cancel\n")
     
