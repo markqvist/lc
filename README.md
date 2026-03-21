@@ -382,6 +382,31 @@ Skills load on demand (or pin them to load immediately). The agent can request s
 
 See [examples](./docs/examples/skills) to get started.
 
+## Writing Quirks
+
+Models are just *perfect*. Except when they're not. When your local Qwen decides tool calls suddenly belong *inside* thinking blocks, or when Kimi starts communicating exclusively in interpretive dance, quirks step in to clean up the mess.
+
+Quirks are surgical patches for model-specific eccentricities. Drop them in `~/.lc/quirks/`:
+
+```python
+# ~/.lc/quirks/my_weird_model_fix.py
+quirk_id = "my_model.edge_case"
+
+def handle(response: dict) -> dict:
+    # Fix the madness before it propagates
+    if "thinking" in response and "command" in response["thinking"]:
+        response["tool_calls"] = extract_from_thinking(response)
+    return response
+```
+
+Apply to your model definitions with `quirks = quirk_id, other_quirk_id`.
+
+They load on startup and transform responses in-flight. Use sparingly. If you find yourself writing more than a few, consider that the problem might be your prompt. Or your life choices.
+
+**Built-in Quirks:**
+
+- `qwen3.5_tool_thoughts`: Fixes Qwen3.5-specific tool calling outputs being emitted inside thinking blocks.
+
 ## Safety
 
 `lc` can execute shell commands and destroy your computer. This is a feature, not a bug.
