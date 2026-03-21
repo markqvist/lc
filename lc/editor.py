@@ -462,8 +462,8 @@ class InlineEditor:
             
             else: self.cursor_row, self.cursor_col = self._visual_to_logical(new_vis_row, self._visual_col)
         
-        # At very top, go to history
         elif self.cursor_row == 0 and self.cursor_col == 0: self._history_prev()
+        elif self.cursor_row == 0 and self.cursor_col > 0: self.cursor_col = 0
 
     def _cursor_down(self):
         # Ensure wrapped view is computed
@@ -489,8 +489,8 @@ class InlineEditor:
                 self.cursor_row, self.cursor_col = self._visual_to_logical(new_vis_row, target_vis_col)
             else: self.cursor_row, self.cursor_col = self._visual_to_logical(new_vis_row, self._visual_col)
         
-        # At very end, go to history
         elif self.cursor_row == len(self.buffer) - 1 and self.cursor_col >= len(self.buffer[self.cursor_row]): self._history_next()
+        elif self.cursor_row == len(self.buffer) - 1 and self.cursor_col < len(self.buffer[self.cursor_row]): self._cursor_end()
 
     def _cursor_home(self):
         self.cursor_col = 0
