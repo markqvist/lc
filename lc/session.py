@@ -598,17 +598,19 @@ class Session:
         
         print("Use \"exit\" or \"quit\" to detach session.")
         print("Ctrl+D or Alt+Enter executes.\n")
+
+        history_path = self.session_file_path.with_suffix(".history")
         
         while True:
             try:
-                # user_input = input("lc> ").strip()
-                editor = InlineEditor(history_file=None)
+                editor = InlineEditor(history_file=history_path)
                 print(TTYRenderer.RESET, end="")
                 user_input = editor.read("lc> ").strip()
 
                 if not user_input:
                     print()
                     break
+                else: print()
                 
                 if user_input.lower() in ("exit", "quit"):
                     print()
