@@ -13,20 +13,23 @@ from typing import Optional, Callable
 
 
 class KeyType(Enum):
-    CHAR      = auto()
-    ENTER     = auto()
-    BACKSPACE = auto()
-    DELETE    = auto()
-    UP        = auto()
-    DOWN      = auto()
-    LEFT      = auto()
-    RIGHT     = auto()
-    HOME      = auto()
-    END       = auto()
-    TAB       = auto()
-    SUBMIT    = auto() # Ctrl+D / Alt+Enter
-    INTERRUPT = auto() # Ctrl+C
-    UNKNOWN   = auto()
+    CHAR         = auto()
+    ENTER        = auto()
+    BACKSPACE    = auto()
+    DELETE       = auto()
+    UP           = auto()
+    DOWN         = auto()
+    LEFT         = auto()
+    RIGHT        = auto()
+    HOME         = auto()
+    END          = auto()
+    HOME_FULL    = auto()  # Ctrl+A - home of total input
+    END_FULL     = auto()  # Ctrl+E - end of total input
+    TAB          = auto()
+    SUBMIT       = auto()  # Ctrl+D / Alt+Enter
+    INTERRUPT    = auto()  # Ctrl+C
+    CLEAR_BUFFER = auto()  # Ctrl+K - clear all input
+    UNKNOWN      = auto()
 
 
 class Key:
@@ -251,6 +254,9 @@ class InlineEditor:
         if c in ('\x08', '\x7f'): return Key(KeyType.BACKSPACE)            # Backspace (Ctrl+H or DEL character)
         if c == '\x1b': return self._read_escape_sequence()                # Escape sequences (arrow keys, etc.)
         if ord(c) == 10 and self._orig_termios: return Key(KeyType.SUBMIT) # Ctrl+Enter (Ctrl+J when already in raw mode is \x0a)
+        if ord(c) == 1: return Key(KeyType.HOME_FULL)                      # Ctrl+A
+        if ord(c) == 5: return Key(KeyType.END_FULL)                       # Ctrl+E
+        if ord(c) == 11: return Key(KeyType.CLEAR_BUFFER)                  # Ctrl+K
         return Key.from_char(c) # Regular characters
 
     def _read_escape_sequence(self) -> Key:
@@ -299,6 +305,9 @@ class InlineEditor:
                                                         KeyType.DOWN: self._cursor_down,
                                                         KeyType.HOME: self._cursor_home,
                                                         KeyType.END: self._cursor_end,
+                                                        KeyType.HOME_FULL: self._cursor_home_total,
+                                                        KeyType.END_FULL: self._cursor_end_total,
+                                                        KeyType.CLEAR_BUFFER: self._clear_input,
                                                         KeyType.TAB: lambda: self._insert_char("    ") }
         handler = handlers.get(key.type)
         if handler: handler()
@@ -506,6 +515,30 @@ class InlineEditor:
         if not self._wrapped_view: self._wrapped_view = self._compute_wrapped_view()
         _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
 
+    def _cursor_home_total(self):
+        self.cursor_row = 0
+        self.cursor_col = 0
+        # Update wrapped view and visual column tracking
+        self._wrapped_view = self._compute_wrapped_view()
+        _, self._visual_col = self._logical_to_visual(0, 0)
+
+    def _cursor_end_total(self):
+        if not self.buffer:
+            return
+        self.cursor_row = len(self.buffer) - 1
+        self.cursor_col = len(self.buffer[-1])
+        # Update wrapped view and visual column tracking
+        self._wrapped_view = self._compute_wrapped_view()
+        _, self._visual_col = self._logical_to_visual(self.cursor_row, self.cursor_col)
+
+    def _clear_input(self):
+        self.buffer = [""]
+        self.cursor_row = 0
+        self.cursor_col = 0
+        # Update wrapped view and visual column tracking
+        self._wrapped_view = self._compute_wrapped_view()
+        _, self._visual_col = self._logical_to_visual(0, 0)
+
     ######################
     # History management #
     ######################
@@ -589,13 +622,16 @@ class InlineEditor:
 
 def main():
     editor = InlineEditor(history_file=None)
-    
+
     print("Inline Editor Test")
     print("==================")
     print("Type your text below.")
     print("- Arrow keys: move cursor")
     print("- Enter: insert new line")
     print("- Backspace/Delete: remove characters")
+    print("- Ctrl+A: move to beginning of total input")
+    print("- Ctrl+E: move to end of total input")
+    print("- Ctrl+K: clear all current input")
     print("- Ctrl+D: submit and display result")
     print("- Ctrl+C: cancel\n")
     
