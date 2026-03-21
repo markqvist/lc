@@ -121,6 +121,7 @@ class Config:
             for model in [m for m in configured_models if not m in models_args]:
                 model_data = ConfigObj(configured_models[model], configspec=model_spec, write_empty_values=True)
                 if not model_data.get("sysprompt", False): model_data["sysprompt"] = "system.jinja"
+                if not model_data.get("api_key",   False): model_data["api_key"]   = ""
                 if not model_data.get("vision",    False): model_data["vision"]    = False
                 if not model_data.get("quirks",    False): model_data["quirks"]    = []
                 if isinstance(model_data["quirks"], str):  model_data["quirks"]    = [model_data["quirks"]]
