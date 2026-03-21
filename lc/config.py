@@ -118,8 +118,11 @@ class Config:
             configured_models = data.get("models", {})
             for model in [m for m in configured_models if not m in models_args]:
                 model_data = ConfigObj(configured_models[model], configspec=model_spec, write_empty_values=True)
-                if not model_data.get("sysprompt", {}): model_data["sysprompt"] = "system.jinja"
-                if not model_data.get("vision",    {}): model_data["vision"]    = False
+                if not model_data.get("sysprompt", False): model_data["sysprompt"] = "system.jinja"
+                if not model_data.get("vision",    False): model_data["vision"]    = False
+                if not model_data.get("quirks",    False): model_data["quirks"]    = []
+                if isinstance(model_data["quirks"], str):  model_data["quirks"]    = [model_data["quirks"]]
+
                 model_validation = model_data.validate(Validator())
                 if not model_validation == True and is_invalid(model_validation):
                     print(f"Model configuration for {model} is invalid")
@@ -232,6 +235,7 @@ temperature = float
 max_tokens = integer
 context_limit = integer
 context_shift_factor = float
+quirks = list
 """
 
 CONFIG_SPEC = """

@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional, Iterator, Callable, TYPE_CHECKING
 from lc.config import Config
 from lc.rendering import TTYRenderer
 from lc.toolkit import Context
+from lc.quirks import get_quirk_registry
 
 if TYPE_CHECKING: from lc.session import Session
 
@@ -32,9 +33,11 @@ class Agent:
         stream_response  = session.config.display.get("stream_output", False) and output_mode == "tty"
         render_markdown  = session.config.display.get("render_markdown", False) and output_mode == "tty" and not disable_markdown
         self.renderer    = TTYRenderer(show_reasoning=show_reasoning, stream_response=stream_response, mode=output_mode, render_markdown=render_markdown)
-        self.show_reasoning  = show_reasoning
-        self.stream_response = stream_response
-        self.render_markdown = render_markdown
+        self.show_reasoning   = show_reasoning
+        self.stream_response  = stream_response
+        self.render_markdown  = render_markdown
+        self.quirks           = get_quirk_registry()
+        self.enabled_quirks   = model_backend.config.get("quirks", [])
     
     def run_turn(self, user_input: str, checkpoint_callback: Callable = None) -> str:
         if checkpoint_callback: checkpoint_callback()
@@ -107,6 +110,12 @@ class Agent:
             raise e
     
     def _process_response(self, response: Dict[str, Any], checkpoint_callback: Callable = None) -> str:
+        for quirk in self.enabled_quirks:
+            if not self.quirks.available(quirk): RNS.log(f"Enabled quirk \"{quirk}\" not available, cannot handle", RNS.LOG_ERROR)
+            else:
+                RNS.log(f"Handling quirk {quirk}", RNS.LOG_DEBUG)
+                response = self.quirks.handle(quirk, response)
+
         message = response.get("message", {})
         tool_calls = message.get("tool_calls", [])
 
