@@ -144,7 +144,7 @@ Edit system prompt templates, et cetera, in `~/.lc/templates`.
 ## But... How do I make it take over the world?
 
 1. Download `llama.cpp` for your specific CPU and GPU architecture, grab a good local model like `GLM 4.7 Flash` or `Qwen 3.5 35B-A3B`.
-2. Install `lc` and point it the config to your local `llama-server` instance.
+2. Install `lc` and point the config to your local `llama-server` instance.
 3. Invoke `lc` from a periodic `cron` job with a completely open-ended prompt.
 
 Your job is done. Watch the chaos unfold. Or just go to sleep.
@@ -239,8 +239,8 @@ LLMs have context windows. You may have noticed. When you feed them more tokens 
 **Configuration:**
 ```ini
 [[primary-model]]
-context_limit = 128000       # Your model's context window
-context_shift_factor = 0.35  # Remove 35% when limit reached (0 disables shifting)
+  context_limit = 128000       # Your model's context window
+  context_shift_factor = 0.35  # Remove 35% when limit reached (0 disables shifting)
 ```
 
 The shift factor controls how aggressively we prune. Too low and you'll shift and recompute every other message. Too high and you'll erase anything that made the machine's actions just tangentially coherent. 0.35 is a sane default, but you will need to think for a moment here, and set it to something that suits your hardware limits and temperament. Set it to 0 if you enjoy watching things explode.
@@ -328,8 +328,8 @@ $ cat contacts.csv | lc "Create a sorted, markdown-formatted contact sheet" > Co
 **Configuration** (in `~/.lc/config`):
 ```ini
 [stdin]
-max_text_bytes = 16384     # Truncate text after this limit
-max_binary_bytes = 512     # Hex dump limit for binary data
+  max_text_bytes = 16384     # Truncate text after this limit
+  max_binary_bytes = 512     # Hex dump limit for binary data
 ```
 
 Binary data is automatically detected and formatted as a hex dump with a warning to the model that the data may be unintentional.
