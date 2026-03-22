@@ -93,14 +93,14 @@ You can freely copy, share and distribute `lc` in binary or source form, as long
 
 ## Installation
 
-While the concept of `lc` had been playing pong in my head for some time, I have so far spent `<=` 4 days on this. The core directive is to keep everything elegant, simple, performant and **functional**. This is in stark contrast to, err.. That other framework; with it's 500+ dependencies and uncountable lines of questionable code nobody has ever even glanced at.
+While the concept of `lc` had been playing pong in my head for some time, I only very recently started working on this. The core directive is to keep everything elegant, simple, performant and **functional**. This is in stark contrast to, err.. That other framework; with it's 500+ dependencies and uncountable lines of questionable code nobody has ever even glanced at.
 
 That being said, things will change, rapidly. Data formats might break, arguments change. Your kitchen may disappear. If none of that scares you:
 
 ```bash
 # Obtain a release .whl file, either by floppy
 # or download. Then install with:
-pip install ./lc-0.4.0-py3-none-any.whl
+pip install ./lc-0.5.7-py3-none-any.whl
 
 # Yes, it actually fits on a floppy.
 ```
