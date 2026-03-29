@@ -13,6 +13,7 @@
 # Web search uses SearXNG compatible API, and you can point it directly to your local
 # SearXNG instance for instant web search functionality.
 
+import os
 import json
 import urllib.request
 import urllib.parse
@@ -30,9 +31,9 @@ class Web(Toolkit):
     gate_level = 0
     
     # API endpoint configuration
-    EXTRACT_URL = "http://192.168.1.2:8543/extract"
-    SEARCH_URL  = "http://192.168.1.2:8544/search"
-    YOUTUBE_URL = "http://192.168.1.2:8545/transcript"
+    EXTRACT_URL = os.environ.get("LC_WEB_FETCH_API",  "http://192.168.1.2:8543/extract")
+    SEARCH_URL  = os.environ.get("LC_WEB_SEARCH_API", "http://192.168.1.2:8544/search")
+    YOUTUBE_URL = os.environ.get("LC_YOUTUBE_API",    "http://192.168.1.2:8545/transcript")
     
     @tool(gate_level=0)
     def fetch_webpage(self, url: str) -> str:
