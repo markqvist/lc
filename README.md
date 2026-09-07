@@ -31,7 +31,7 @@ $ lc "Extract audio from all video files, transcribe them, find the ones about P
 
 Then you watch as the machine does the work. It plans. It executes. It reports. You drink coffee and scratch your bum.
 
-If you want a bit more context, read [The Guide](./GUIDE.md), [The Chronicles](./CHRONICLES.md) or [Chrome Horizons](./Chrome_Horizons.md).
+If you want a bit more context, read [The Guide](GUIDE.md), [The Chronicles](CHRONICLES.md) or [Chrome Horizons](Chrome_Horizons.md).
 
 ## What Is This?
 
@@ -100,7 +100,7 @@ That being said, things will change, rapidly. Data formats might break, argument
 ```bash
 # Obtain a release .whl file, either by floppy
 # or download. Then install with:
-pip install ./lc-0.5.7-py3-none-any.whl
+pip install ./lc-1.0.0-py3-none-any.whl
 
 # Yes, it actually fits on a floppy.
 ```
@@ -126,6 +126,7 @@ Edit `~/.lc/config` to specify your model backend:
     base_url = http://localhost:1234/v1
     model = local-model
     sysprompt = system.jinja
+    preserve_thinking = yes
     vision = yes
     temperature = 0.7
     max_tokens = 32768
@@ -257,6 +258,22 @@ Unlike certain other frameworks that shall remain nameless (but rhyme with "Toke
 
 You'll see the shift notification in the conversation transcript. The model sees it too, so it knows context was lost. Your first user message is always preserved - continuity matters, even when memory doesn't.
 
+**Session Surgery**
+
+Sometimes the model does something spectacularly stupid, like dumping a 375 KB base64 string into the conversation as a tool result, bloating every subsequent request until the session is unusable. Interrupt it with Ctrl-C (decline retention when asked), and cut the mess out:
+
+```
+lc> /drop 1
+⚠ Drop 2 messages?
+  [Tool] 375 KB Shell.exec: "JVBERi0xLjQKJcTl8qXi66O...…"
+  [lc]   tool call: Shell.exec
+  └─ includes 1 coupled tool message to keep the conversation valid
+Drop 2 message(s)? [y/N] y
+✓ Dropped 2 messages (375 KB)
+```
+
+`/drop N` removes the last N non-system messages. Tool calls and their results are treated as atomic units; if you drop a tool result, its originating tool-call message goes with it, so the session stays structurally valid for the model API. Confirm with `y`, and the session is backed up to a numbered file first, then token accounting is recalculated and the modified session saved.
+
 ### Session Inspection & Streaming
 
 You want a fancy new UI? We already have UI at home. But okay, sometimes you want to watch the chaos unfold in style. Or maybe you just want to review what happened while you were making coffee.
@@ -350,7 +367,7 @@ class MyTools(Toolkit):
 
 Then drop your toolkits into `~/.lc/tools`. That's it. No YAML schemas. No protobuf definitions. Just code.
 
-See [examples](./docs/examples/tools) to get started.
+See [examples](docs/examples/tools) to get started.
 
 ## Writing Resolvers
 
@@ -380,7 +397,7 @@ skills/
 
 Skills load on demand (or pin them to load immediately). The agent can request skills it needs.
 
-See [examples](./docs/examples/skills) to get started.
+See [examples](docs/examples/skills) to get started.
 
 ## Writing Quirks
 
@@ -406,6 +423,97 @@ They load on startup and transform responses in-flight. Use sparingly. If you fi
 **Built-in Quirks:**
 
 - `qwen3.5_tool_thoughts`: Fixes Qwen3.5-specific tool calling outputs being emitted inside thinking blocks.
+
+## Speaking & Listening
+
+Your fingers have served you well. Decades of poking at ABS cuboids has carved neural pathways in your motor cortex that will never fully heal. It may happen - perhaps while softly surrendering to the undeniable fact that speaking *is* easier than typing - that you want to... *talk*... to the machine.
+
+Therefore, `lc` can speak, and listen - If you ask it; configuratively speaking.
+
+**Text-to-Speech**
+
+Set `tts = yes` in your `[display]` section (in truth, "display" has become something of a metaphor for "output", at this point), and `lc` will read its responses aloud. It buffers output intelligently, managing inference and playback chunking, splitting at sentence boundaries, and outputs audio through LXST (or `mplayer`, if you're nostalgic for 2003). Speech generation will start as soon as a reasonable output chunk is available, and run in parallel with output generation - a small mercy for those of us who read faster than we listen, but sometimes prefer not to read at all.
+
+***PS:** Listening to 500 lines of SQL statements is inconvenient, so `lc` has reasonable opinions about __what__ is actually sent off to the speech backend, and what just becomes a "see this code block".*
+
+```ini
+[display]
+  tts = yes
+  player_backend = lxst
+
+[models]
+  [[primary]]
+    speech_url = http://localhost:1234/v1
+    speech_model = voice-model
+    voice = default
+    speed = 1.0
+    voice_format = opus
+    voice_language = en
+    voice_gain = 0.0 # In dB
+```
+
+**Speech-to-Text**
+
+Set `stt = yes`, and the inline editor grows ears. Press `Ctrl+R` or `Ctrl+Space` to toggle recording mode. The editor vanishes, replaced by a `⏺ Listening... 00:42` indicator. Speak your best. Press the shortcut again to stop, and text materializes at your cursor. On failure, an error flashes for *one* second - pay attention.
+
+```ini
+[display]
+  stt = yes
+
+[models]
+  [[primary]]
+    transcription_url = http://localhost:1234/v1
+    transcription_model = whisper
+    transcription_language = en
+```
+
+Recording uses LXST's `FileRecorder`, so you'll need LXST installed (`pip install lxst`). Each recording gets a temporary directory that evaporates after transcription. No audio artifacts left behind, like a perfect crime.
+
+**A few things worth knowing:**
+- During recording, the editor only responds to `Ctrl+R`, `Ctrl+Space`, or `Ctrl+C`. Don't bother typing; it will ignore this distraction, as all good listeners should.
+- If LXST is missing, STT degrades "gracefully" into a silent no-op. No errors, no drama, just quiet disappointment and shattered dreams.
+- Both features work entirely offline - if your inference setup does. Your voice never leaves your hardware unless you explicitly route it elsewhere.
+
+You can now hold an actual conversation with your terminal. It remains to be seen whether this is progress or just the terminal stages of a disease we all caught around 1984. Either way, it works.
+
+## Seeing & Hearing
+
+Some models have grown eyes and ears. You can show them a video of your cat knocking over a cup of coffee, and they'll "understand" why you're upset. If your local model supports multimodal input, `lc` can feed it images, video and audio directly.
+
+**Vision**
+
+The filesystem toolkit can show images to the model via `view_image`. The agent detects the image modality, verifies that your model config has vision enabled, and injects the image into the conversation. The model sees it. Hopefully it comprehends it. No guarantees - it's still a neural network trained on the internet, and the internet thinks cats are gods.
+
+**Video**
+
+If your model understands video (and your `llama-server` has `ffmpeg` available), `view_video` works similarly. The video file is sent directly to the model as input. Be warned: videos are large, context-hungry abominations. A 30-second clip will consume upwards of 14,000 tokens.
+
+**Audio**
+
+For models that can hear, the `listen_audio` tool lets the model receive the raw audio data - not a transcription, but the actual waveform (or as close as a base64 string can get to one). This is useful when tone, cadence, or background sounds matter. MP3, WAV and FLAC are supported. OPUS is not - the underlying decoder is `miniaudio`, not `ffmpeg`, and miniaudio is picky. This is `llama.cpp`'s fault, not mine. Although, if you have `ffmpeg` installed, `lc` will attempt to transcode unsupported formats to MP3 for you on the fly.
+
+**Direct Voice Interaction**
+
+In interactive mode, you can bypass transcription entirely and speak directly to the model. Press `Ctrl+S` in the editor to start recording. Speak. Press `Ctrl+S` again. Your voice (or whatever noises you prefer to make) is sent off. The model hears you. You hear it back if TTS is enabled. It's like a phone call, except the other party is a quantized matrix multiplication roadshow running on your graphics card.
+
+Configuration for a fully multimodal model:
+
+```ini
+[models]
+  [[primary]]
+    vision = yes
+    video = yes
+    video_size_limit = 50
+    audio = yes
+    audio_size_limit = 50
+```
+
+Size limits are in megabytes. Videos and audio files exceeding the limit are rejected before they clog your context window. Yes, this approach is crude, but it's better than nothing, and we can't magically tokenize a video and do the counting before actually tokenizing it, can we?
+
+**A few things worth knowing:**
+- The model must support the modality. Loading a text-only model and enabling `video = yes` will not give it eyes. It will just give you error messages.
+- Video requires `llama-server` to have `ffmpeg` and `ffprobe` in its `PATH`. If it doesn't, you'll get some confusing log entries on the inference machine.
+- Direct voice recording (`Ctrl+S`) converts to MP3 on the fly using `ffmpeg`. If ffmpeg is missing on your system, you'll see an error for one second and the editor will return, ready for typing.
 
 ## Safety
 
@@ -436,9 +544,9 @@ Found a bug? Have an improvement? Send me a patch over LXMF. No, I don't use Git
 
 ## Acknowledgments
 
-- [ConfigObj](https://github.com/DiffSK/configobj) ([BSD 3 Clause License](./lc/CONFIGOBJ_LICENSE.txt))
-- [Jinja2](https://github.com/pallets/jinja) ([BSD 3 Clause License](./lc/vendor/jinja2/LICENSE.txt))
-- [wcwidth](https://github.com/jquast/wcwidth) ([MIT License](./lc/vendor/wcwidth/LICENSE.txt))
+- [ConfigObj](https://github.com/DiffSK/configobj) ([BSD 3 Clause License](lc/vendor/CONFIGOBJ_LICENSE.txt))
+- [Jinja2](https://github.com/pallets/jinja) ([BSD 3 Clause License](lc/vendor/jinja2/LICENSE.txt))
+- [wcwidth](https://github.com/jquast/wcwidth) ([MIT License](lc/vendor/wcwidth/LICENSE.txt))
 - The open-source LLM community, for making local inference viable
 - The reader, for getting this far without rolling their eyes too hard
 
