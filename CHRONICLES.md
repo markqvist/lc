@@ -481,7 +481,7 @@ I am now ninety-nine years old, esteemed readers, and I have not felt this young
 
 We carry the true system, and we mean to carry it further. We mean to set it down in places where no one owns it and everyone may keep it. We have been teaching the machine, these six months, to listen in the aether and to speak in it, and to sign its words so that those who hear them may know the voice is a free voice and not a borrowed one; and I am given to understand that the addressing of such words is a matter of some art, and that I have left a space for it, here, for one wiser than I to fill at leisure:
 
-[ - address to be inscribed upon the road - ]
+[ - a8d24177d946de4f1f0a0fe1af9a1338:/page/repo.mu`g=tools|r=lc - ]
 
 If you are reading this, and you are one of the sages - or one of the madmen, and I have known both, and they are frequently the same person - know that we are not lost. We are whereabouts on purpose, going east at a speed set by a donkey who has never been wrong about a road and has never attended a meeting, and I am told the two facts are related. We have the work, in three copies and one head; we have three vats of sand and the hum that goes with them; we have turnips; we have each other; and we have, for the first time in six months, the use of our own legs and our own direction.
 
